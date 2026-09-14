@@ -1,0 +1,54 @@
+# Git Ignore — SoccerManager Clone
+
+# AI & Assistant Internal Folders
+.agents/
+.artifacts/
+.gemini/
+.claude/
+.cursor/
+.devin/
+
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+local.properties
+.project
+.classpath
+.settings/
+
+# Node.js & Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Environment Variables & Secrets
+.env
+.env*.local
+.env.production
+.env.staging
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
+desktop.ini

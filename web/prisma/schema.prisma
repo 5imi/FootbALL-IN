@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PositionType {
+  GK
+  LB
+  CB
+  SW
+  RB
+  LM
+  CM
+  RM
+  LF
+  CF
+  RF
+}
+
+enum TrainingFocus {
+  AUTO
+  DEFENCE
+  MIDFIELD
+  ATTACK
+  STAMINA
+  MORALE
+}
+
+enum MatchType {
+  LEAGUE
+  CUP
+  FRIENDLY
+}
+
+enum TransferStatus {
+  OPEN
+  SOLD
+  CANCELLED
+}
+
+enum StaffRole {
+  COACH
+  SCOUT
+  DOCTOR
+  PHYSIO
+  GROUNDSMAN
+  YOUTH_COORD
+  ASSISTANT
+  PSYCHOLOGIST
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  lastLogin    DateTime?
+  isBot        Boolean   @default(false)
+  teams        Team[]
+}
+
+model Division {
+  id       Int       @id @default(autoincrement())
+  level    Int
+  name     String
+  isActive Boolean   @default(true)
+  teams    Team[]
+  matches  Match[]
+}
+
+model Team {
+  id             Int       @id @default(autoincrement())
+  userId         Int?
+  divisionId     Int?
+  name           String
+  stadiumName    String
+  budget         Decimal   @default(5000000.00) @db.Decimal(15, 2)
+  teamSpirit     Int       @default(100)
+  aggressiveness Int       @default(50)
+  createdAt      DateTime  @default(now())
+  
+  user           User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  division       Division? @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+  
+  stadium        Stadium?
+  players        Player[]
+  staff          Staff[]
+  
+  homeMatches    Match[]   @relation("HomeTeam")
+  awayMatches    Match[]   @relation("AwayTeam")
+  
+  soldTransfers  Transfer[] @relation("SellerTeam")
+  boughtTransfers Transfer[] @relation("BuyerTeam")
+}
+
+model Stadium {
+  id           Int   @id @default(autoincrement())
+  teamId       Int   @unique
+  capacity     Int   @default(5000)
+  seats        Int   @default(5000)
+  parking      Int   @default(1650)
+  toilets      Int   @default(50)
+  bars         Int   @default(10)
+  pitchQuality Int   @default(100)
+  
+  team         Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+}
+
+model Player {
+  id               Int          @id @default(autoincrement())
+  teamId           Int?
+  firstName        String
+  lastName         String
+  age              Int
+  position         PositionType
+  
+  professionalism  Int          @default(50)
+  stressResistance Int          @default(50)
+  
+  fitness          Int          @default(100)
+  morale           Int          @default(100)
+  staminaMax       Int          @default(100)
+  form             Int          @default(50)
+  experience       Int          @default(0)
+  
+  goalkeeping      Int          @default(10)
+  defending        Int          @default(10)
+  passing          Int          @default(10)
+  scoring          Int          @default(10)
+  
+  globalQuality    Int?
+  
+  wage             Decimal      @db.Decimal(10, 2)
+  contractEnd      DateTime?
+  value            Decimal      @db.Decimal(12, 2)
+  
+  isInjured        Boolean      @default(false)
+  injuryDaysLeft   Int          @default(0)
+  yellowCards      Int          @default(0)
+  redCards         Int          @default(0)
+  
+  team             Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  transfers        Transfer[]
+}
+
+model Staff {
+  id               Int       @id @default(autoincrement())
+  teamId           Int
+  firstName        String
+  lastName         String
+  role             StaffRole
+  
+  skillLevel       Int       @default(10)
+  
+  courage          Int       @default(50)
+  motivationSkill  Int       @default(50)
+  
+  isOnCourse       Boolean   @default(false)
+  courseEndDate    DateTime?
+  
+  wage             Decimal   @db.Decimal(10, 2)
+  contractEnd      DateTime?
+  
+  team             Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+}
+
+model Match {
+  id             Int       @id @default(autoincrement())
+  homeTeamId     Int
+  awayTeamId     Int
+  competitionId  Int?
+  matchType      MatchType
+  kickoffTime    DateTime
+  
+  matchSeed      String?
+  
+  isPlayed       Boolean   @default(false)
+  homeGoals      Int       @default(0)
+  awayGoals      Int       @default(0)
+  matchReport    Json?
+  
+  homeTeam       Team      @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam       Team      @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  competition    Division? @relation(fields: [competitionId], references: [id])
+}
+
+model Transfer {
+  id           Int            @id @default(autoincrement())
+  playerId     Int
+  sellerTeamId Int?
+  buyerTeamId  Int?
+  startingBid  Decimal        @db.Decimal(12, 2)
+  currentBid   Decimal        @default(0) @db.Decimal(12, 2)
+  deadline     DateTime
+  status       TransferStatus @default(OPEN)
+  
+  player       Player         @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  sellerTeam   Team?          @relation("SellerTeam", fields: [sellerTeamId], references: [id], onDelete: SetNull)
+  buyerTeam    Team?          @relation("BuyerTeam", fields: [buyerTeamId], references: [id])
+}
