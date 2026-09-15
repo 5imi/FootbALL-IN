@@ -94,16 +94,43 @@ Fiecare agent care preia sarcini în acest proiect este **OBLIGAT** să citeasc�
 
 ---
 
-## 🎨 5. Standarde de Design și UI/UX
+## 🎨 5. Standarde de Design și UI/UX (Consistența Temei Vizuale)
 
-1. **Aesthetic Excellence (Design Premium)**:
-   * Interfața trebuie să fie modernă, curată, în Dark Mode cu nuanțe elegante (glassmorphism discret, culori HSL armonioase, tipografie modernă precum *Inter* sau *Outfit*).
-   * **Fără tabele HTML demodate din anii 2000**. Datele trebuie prezentate prin carduri interactive, grafice vizuale (Chart.js / Recharts) și indicatori de progres bine definiți.
-2. **Mobile-First & Responsiveness**:
-   * Jocul trebuie să fie perfect utilizabil și optimizat pe ecrane de telefon mobil (iOS / Android) și tablete, nu doar pe monitoare desktop.
-3. **Meciul Live Text & Timeline Interactiv**:
+1. **Regula de Aur a Temei Unificate (Aceeași Temă peste Tot)**:
+   * **TOATE paginile, tab-urile, ferestrele modale și componentele din aplicație TREBUIE să păstreze cu strictețe ACEEAȘI TEMĂ VIZUALĂ**.
+   * Este strict interzisă abaterea stilistică de la o pagină la alta (fără stiluri hibride sau culori la întâmplare).
+   * **Baza Temei Vizuale**: Un stil modern, elegant și curat Dark Mode (`bg-slate-950` fundal principal, `bg-slate-900` carduri/tabele, borduri discrete `slate-800` sau `border-blue-900/40`, accente albastre SoccerProject `#2563eb` / `#3b82f6`, text `text-slate-200` și `text-white`).
+
+2. **Design Curat, Compact & Fără Spațiu Irosit (Modelul SP)**:
+   * Paginile funcționale (Antrenament, Baza Sportivă/Stadion, Personal/Staff, Lot jucători, Transferuri) trebuie să fie **compacte, condensate și aerisite**, exact conform modelului SoccerProject.
+   * **Fără elemente vizuale masive inutile**: Nu se adaugă acordeoane voluminoase sau mini-carduri interne care ocupă spațiu vertical inutil pe paginile tabelare.
+   * Informația trebuie să fie densă, clară și rapid accesibilă dintr-o privire.
+
+3. **Coduri de Culoare Standardizate pentru Poziții**:
+   * Toate componentele vor folosi exact aceleași coduri de culori consacrate pentru insigne:
+     * **Portari (`GK`)**: Portocaliu cărămiziu (`bg-[#d35400] text-white`)
+     * **Fundași (`LB`, `CB`, `SW`, `RB`)**: Galben-muștar / Kaki (`bg-[#d4ac0d] text-slate-950 font-bold`)
+     * **Mijlocași (`LM`, `CM`, `RM`)**: Verde (`bg-[#27ae60] text-white`)
+     * **Atacanți (`LF`, `CF`, `RF`)**: Albastru (`bg-[#2980b9] text-white`)
+
+4. **Sistem Unitar de Bare și Plafonate (Atribute SP)**:
+   * Bare de atribute în dezvoltare: Albastru (`bg-blue-500` / `#3b82f6`).
+   * **Atribute Plafonate Genetic (`maxCap` atins)**: Bară **ROȘIE** (`bg-rose-500` / `#ef4444`, text roșu și etichetă `(Plafonat 🔒)`), conform regulii SoccerProject.
+   * În selecțiile de antrenament și tabele, atributele plafonate sunt evidențiate cu roșu pentru a ghida decizia managerului.
+
+5. **Interacțiune Unitară Jucători & Modalul SP**:
+   * Numele oricărui jucător dintr-un tabel este întotdeauna un link albastru interactiv (`text-blue-400 hover:text-blue-300 hover:underline cursor-pointer`).
+   * La apăsarea pe nume, se deschide întotdeauna **Fereastra Modală Detaliată SP** (`PlayerDetailsModal`), conținând toate datele biometrice, istoricul, barele și atributele.
+   * Această abordare menține paginile principale curate și compacte, fără duplicate.
+
+6. **Stil Unitar pentru Butoane, Formulare & Notificări**:
+   * Butoanele principale (`Automatic`, `Salvează`, etc.) folosesc stilul clasic compact cu hover discret și feedback la apăsare (`active:translate-y-0.5`).
+   * Notificările de succes la salvare sunt afișate prin bannere toast verzi (`bg-emerald-950/80 border border-emerald-500/50 text-emerald-200`).
+   * Toate meniurile drop-down (`<select>`) au fundal întunecat (`bg-slate-950 border border-slate-700 text-slate-200`).
+
+7. **Meciul Live Text & Timeline Interactiv**:
    * Simularea meciului se afișează ca **Live Text Ticker** (text comentat dinamic minut cu minut) însoțit de un **Timeline vizual al evenimentelor** (0' - 90', cu icoane pentru goluri, cartonașe, bare și intervenții VAR).
-   * Fără încărcare inutilă de canvas sau fizică 2D. Experiența trebuie să fie ultra-rapidă, curată și captivantă ca o cronică sportivă live.
+   * Fără încărcare inutilă de canvas sau fizică 2D. Experiența este ultra-rapidă, curată și captivantă.
 
 ---
 

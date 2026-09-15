@@ -130,3 +130,14 @@ export function trainWholeSquad(
 
   return reports;
 }
+
+/**
+ * Returnează atributul neplafonat cu cea mai mică valoare pentru un jucător
+ */
+export function getLowestUncappedSkill(player: Player): SkillName | null {
+  if (!player.skills) return null;
+  const uncappedSkills = (Object.keys(player.skills) as SkillName[])
+    .filter(k => !player.skills[k].isTrainedMax)
+    .sort((a, b) => player.skills[a].value - player.skills[b].value);
+  return uncappedSkills.length > 0 ? uncappedSkills[0] : null;
+}
