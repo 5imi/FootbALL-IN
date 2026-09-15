@@ -226,112 +226,141 @@ export default function Home() {
       
       {/* ─── Header Principal Unificat ─── */}
       <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1450px] flex-col lg:flex-row items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+        <div className="mx-auto flex max-w-[1550px] items-center justify-between gap-3 px-4 py-2 sm:px-6">
           
           {/* Logo & Info Club Activ */}
-          <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start shrink-0">
-            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('control')}>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-md shadow-blue-500/20 text-lg">
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Logo Brand */}
+            <div 
+              className="flex items-center gap-2 cursor-pointer group" 
+              onClick={() => setActiveTab('control')}
+              title="Acasă / Panou Control"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-md shadow-blue-500/20 text-lg transition-transform group-hover:scale-105">
                 ⚽
               </div>
-              <div>
-                <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+              <div className="hidden sm:block">
+                <div className="text-sm font-black tracking-tight text-white flex items-center gap-1.5 leading-none">
                   <span>FootbALL-IN</span>
-                  <span className="rounded bg-blue-900/60 text-blue-400 px-1.5 py-0.2 text-[9px] font-mono uppercase border border-blue-700/40">
-                    SoccerProject SP
+                  <span className="rounded bg-blue-900/60 text-blue-400 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase border border-blue-700/40">
+                    SP
                   </span>
-                </h1>
-                <p className="text-[10px] text-zinc-400 font-medium flex items-center gap-1">
-                  <span>{managerCountry.flag}</span>
-                  <span className="text-zinc-300 font-semibold">{activeManager ? activeManager.teamName : homeTeam.name}</span>
-                  <span>•</span>
-                  <span className="text-emerald-400 font-mono">€{finances.balance.toLocaleString()}</span>
-                </p>
+                </div>
+                <div className="text-[10px] text-zinc-400 font-medium mt-0.5">
+                  SoccerProject Classic
+                </div>
+              </div>
+            </div>
+
+            {/* Club Status Pill */}
+            <div 
+              onClick={() => setActiveTab('control')}
+              className="flex items-center gap-2 rounded-xl bg-zinc-900/80 hover:bg-zinc-800/80 border border-zinc-800 px-2.5 py-1 cursor-pointer transition shadow-inner"
+              title="Clubul Tău Activ (Click pentru Panou Control)"
+            >
+              <span className="text-sm">{managerCountry.flag}</span>
+              <div className="flex flex-col text-left">
+                <span className="text-xs font-bold text-zinc-100 max-w-[130px] sm:max-w-[170px] truncate leading-tight">
+                  {activeManager ? activeManager.teamName : homeTeam.name}
+                </span>
+                <span className="text-[10px] font-mono font-bold text-emerald-400 leading-tight">
+                  €{finances.balance.toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Navigare Tab-uri & Limbă Desktop */}
-          <div className="flex items-center gap-2.5 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <nav className="flex items-center gap-1 rounded-xl bg-zinc-900/90 p-1 border border-zinc-800 text-xs shadow-inner shrink-0">
+          {/* Navigare Tab-uri (Central) */}
+          <div className="flex-1 flex items-center justify-center overflow-x-auto no-scrollbar py-1">
+            <nav className="flex items-center gap-1 rounded-xl bg-zinc-900/90 p-1 border border-zinc-800/80 text-xs shadow-inner shrink-0">
               <button
                 onClick={() => setActiveTab('match')}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
                   activeTab === 'match'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
                 }`}
               >
-                <span>🏟️</span> {t('nav_match')}
+                <span>🏟️</span>
+                <span>{t('nav_match')}</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('tactics')}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
                   activeTab === 'tactics'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
                 }`}
               >
-                <span>📋</span> {t('nav_tactics')}
+                <span>📋</span>
+                <span>{t('nav_tactics')}</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('training')}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
                   activeTab === 'training'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
                 }`}
               >
-                <span>🏃</span> {t('nav_training')}
+                <span>🏃</span>
+                <span>{t('nav_training')}</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('standings')}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
                   activeTab === 'standings'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
                 }`}
               >
-                <span>🏆</span> {t('nav_standings')}
+                <span>🏆</span>
+                <span>{t('nav_standings')}</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('staff')}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
                   activeTab === 'staff'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
                 }`}
               >
-                <span>👔</span> {t('nav_staff')}
+                <span>👔</span>
+                <span>{t('nav_staff')}</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('transfers')}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
                   activeTab === 'transfers'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
                 }`}
               >
-                <span>🤝</span> {t('nav_transfers')}
+                <span>🤝</span>
+                <span>{t('nav_transfers')}</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('control')}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
                   activeTab === 'control'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-zinc-400 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
                 }`}
               >
-                <span>⚙️</span> {t('nav_control')}
+                <span>⚙️</span>
+                <span>{t('nav_control')}</span>
               </button>
             </nav>
+          </div>
 
+          {/* Acțiuni Dreapta (Google Auth + Selector Limbă) */}
+          <div className="flex items-center gap-2 shrink-0">
             {/* Google / Gmail Login Button */}
             <GoogleAuthButton 
               onAuthChange={(u) => {
@@ -345,17 +374,17 @@ export default function Home() {
             <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-zinc-800 text-xs">
               <button 
                 onClick={() => handleLanguageChange('ro')}
-                className={`px-2.5 py-1 rounded-lg font-bold transition ${language === 'ro' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'}`}
+                className={`px-2 py-1 rounded-lg font-bold transition ${language === 'ro' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'}`}
                 title="Română"
               >
-                🇷🇴 RO
+                RO
               </button>
               <button 
                 onClick={() => handleLanguageChange('en')}
-                className={`px-2.5 py-1 rounded-lg font-bold transition ${language === 'en' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'}`}
+                className={`px-2 py-1 rounded-lg font-bold transition ${language === 'en' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'}`}
                 title="English"
               >
-                🇬🇧 EN
+                EN
               </button>
             </div>
           </div>

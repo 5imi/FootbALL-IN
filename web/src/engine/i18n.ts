@@ -3,13 +3,13 @@ export type Language = 'ro' | 'en';
 export const TRANSLATIONS = {
   ro: {
     // Navigare
-    nav_match: '🏟️ Meciul Zilei',
-    nav_tactics: '📋 Primul 11 & Teren',
-    nav_training: '🏃 Antrenament & Refacere',
-    nav_standings: '🏆 Clasament Divizia A',
-    nav_staff: '👔 Personal & Buget',
-    nav_transfers: '🤝 Piață Transferuri',
-    nav_control: '⚙️ Panou Control',
+    nav_match: 'Meciul Zilei',
+    nav_tactics: 'Primul 11',
+    nav_training: 'Antrenament',
+    nav_standings: 'Clasament SP',
+    nav_staff: 'Staff & Buget',
+    nav_transfers: 'Transferuri',
+    nav_control: 'Panou Manager',
 
     // Înregistrare („Crează-ți propria echipă”)
     reg_title: 'Crează-ți propria echipă',
@@ -100,13 +100,13 @@ export const TRANSLATIONS = {
   },
   en: {
     // Navigation
-    nav_match: '🏟️ Match Day',
-    nav_tactics: '📋 Lineup & Tactics',
-    nav_training: '🏃 Training & Recovery',
-    nav_standings: '🏆 Division A Standings',
-    nav_staff: '👔 Staff & Finances',
-    nav_transfers: '🤝 Transfer Market',
-    nav_control: '⚙️ Control Panel',
+    nav_match: 'Match Day',
+    nav_tactics: 'Lineup',
+    nav_training: 'Training',
+    nav_standings: 'Standings SP',
+    nav_staff: 'Staff & Budget',
+    nav_transfers: 'Transfers',
+    nav_control: 'Manager Panel',
 
     // Registration ("Create your own team")
     reg_title: 'Create your own team',
