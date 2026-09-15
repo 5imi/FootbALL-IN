@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initialTeams } from '../engine/data/teams';
 import { simulateMatch } from '../engine/matchSimulator';
-import { MatchSimulationResult, LeagueStandingRow, CorruptionConfig, Player } from '../engine/types';
+import { MatchSimulationResult, CorruptionConfig, Player } from '../engine/types';
 import { ScoreBoard } from '../components/ScoreBoard';
 import { MatchControls } from '../components/MatchControls';
 import { MatchTimeline } from '../components/MatchTimeline';
@@ -13,21 +13,72 @@ import { LeagueTableView } from '../components/LeagueTableView';
 import { PitchLineupView } from '../components/PitchLineupView';
 import { PlayerDetailsModal } from '../components/PlayerDetailsModal';
 import { TrainingManagementView } from '../components/TrainingManagementView';
+import { StaffManagementView } from '../components/StaffManagementView';
+import { ControlPanelView } from '../components/ControlPanelView';
+import { ManagerRegistrationModal } from '../components/ManagerRegistrationModal';
+import { 
+  loadDivisionTeams, 
+  loadActiveManager, 
+  DivisionTeam, 
+  ManagerProfile 
+} from '../engine/divisionEngine';
+import { loadClubFinances, ClubFinances, saveClubFinances } from '../engine/financeEngine';
+import { Language, getTranslation } from '../engine/i18n';
+import { COUNTRIES } from '../engine/countries';
 
 export default function Home() {
-  const [homeTeam] = useState(initialTeams[0]);
+  // Limbă internațională (i18n)
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('footballin_lang');
+      if (saved === 'en' || saved === 'ro') return saved;
+    }
+    return 'ro';
+  });
+
+  const handleLanguageChange = (lang: Language) => {
+    setLanguage(lang);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('footballin_lang', lang);
+    }
+  };
+
+  const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
+
+  // Manager Activ & Echipe Divizia A
+  const [activeManager, setActiveManager] = useState<ManagerProfile | null>(() => loadActiveManager());
+  const [divisionTeams, setDivisionTeams] = useState<DivisionTeam[]>(() => loadDivisionTeams());
+  const [finances, setFinances] = useState<ClubFinances>(() => loadClubFinances());
+  const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
+
+  // Echipe meci
+  const [homeTeam, setHomeTeam] = useState(() => {
+    const base = { ...initialTeams[0] };
+    if (typeof window !== 'undefined') {
+      try {
+        const savedSquad = localStorage.getItem('footballin_user_squad');
+        if (savedSquad) {
+          const parsed: Player[] = JSON.parse(savedSquad);
+          base.lineup = parsed.slice(0, 11);
+          base.bench = parsed.slice(11);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return base;
+  });
+
   const [awayTeam] = useState(initialTeams[1]);
 
-  // Tab activ: 'match' | 'tactics' | 'training' | 'standings'
-  const [activeTab, setActiveTab] = useState<'match' | 'tactics' | 'training' | 'standings'>('match');
-
+  // Tab activ: 'match' | 'tactics' | 'training' | 'standings' | 'staff' | 'control'
+  const [activeTab, setActiveTab] = useState<'match' | 'tactics' | 'training' | 'standings' | 'staff' | 'control'>('standings');
 
   // Configurație Corupție / Culise
   const [bribeTeam, setBribeTeam] = useState<'none' | 'home' | 'away'>('none');
   const [bribeAmount, setBribeAmount] = useState<number>(25000);
   const [biscottoEnabled, setBiscottoEnabled] = useState<boolean>(false);
 
-  // Helper generare config corupție
   const buildCorruptionConfig = (
     teamChoice = bribeTeam,
     amount = bribeAmount,
@@ -46,118 +97,59 @@ export default function Home() {
     };
   };
 
-  // Simularea curentă (seed fix inițial pentru a evita hydration mismatch între SSR și client)
+  // Simularea curentă
   const [matchResult, setMatchResult] = useState<MatchSimulationResult>(() =>
-    simulateMatch(initialTeams[0], initialTeams[1], 1001)
+    simulateMatch(homeTeam, initialTeams[1], 1001)
   );
 
   const [currentMinute, setCurrentMinute] = useState<number>(1);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [speedMs, setSpeedMs] = useState<number>(220); // default 3x rapid
+  const [speedMs, setSpeedMs] = useState<number>(220);
   const [isFinished, setIsFinished] = useState<boolean>(false);
 
   // Popup Detalii Jucător (SoccerProject Card)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [isForeignPlayer, setIsForeignPlayer] = useState<boolean>(false);
 
-
-  // Clasament și Istoric meciuri
-  const [standings, setStandings] = useState<LeagueStandingRow[]>([
-    {
-      teamId: initialTeams[0].id,
-      teamName: initialTeams[0].name,
-      shortName: initialTeams[0].shortName,
-      primaryColor: initialTeams[0].primaryColor,
-      played: 0,
-      won: 0,
-      drawn: 0,
-      lost: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      goalDiff: 0,
-      points: 0,
-    },
-    {
-      teamId: initialTeams[1].id,
-      teamName: initialTeams[1].name,
-      shortName: initialTeams[1].shortName,
-      primaryColor: initialTeams[1].primaryColor,
-      played: 0,
-      won: 0,
-      drawn: 0,
-      lost: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      goalDiff: 0,
-      points: 0,
-    },
-  ]);
-
-  const [matchHistory, setMatchHistory] = useState<{ home: string; away: string; score: [number, number] }[]>([]);
-
-  // Referință pentru timer
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Funcție de finalizare și înregistrare meci în clasament
-  const finalizeMatch = (finalScore: [number, number]) => {
-    setIsFinished(true);
-    setIsPlaying(false);
-    const totalMin = 90 + (matchResult.extraTime || 0);
-    setCurrentMinute(totalMin);
-
-    const [hGoals, aGoals] = finalScore;
-
-    setStandings((prev) => {
-      const homeRow = { ...prev[0] };
-      const awayRow = { ...prev[1] };
-
-      homeRow.played += 1;
-      awayRow.played += 1;
-      homeRow.goalsFor += hGoals;
-      homeRow.goalsAgainst += aGoals;
-      homeRow.goalDiff = homeRow.goalsFor - homeRow.goalsAgainst;
-
-      awayRow.goalsFor += aGoals;
-      awayRow.goalsAgainst += hGoals;
-      awayRow.goalDiff = awayRow.goalsFor - awayRow.goalsAgainst;
-
-      if (hGoals > aGoals) {
-        homeRow.won += 1;
-        homeRow.points += 3;
-        awayRow.lost += 1;
-      } else if (aGoals > hGoals) {
-        awayRow.won += 1;
-        awayRow.points += 3;
-        homeRow.lost += 1;
-      } else {
-        homeRow.drawn += 1;
-        homeRow.points += 1;
-        awayRow.drawn += 1;
-        awayRow.points += 1;
-      }
-
-      return [homeRow, awayRow];
-    });
-
-    setMatchHistory((prev) => [
+  // Când managerul finalizează înregistrarea și preluarea echipei bot
+  const handleRegistrationComplete = (newManager: ManagerProfile, newSquad: Player[]) => {
+    setActiveManager(newManager);
+    setDivisionTeams(loadDivisionTeams());
+    
+    // Actualizăm echipa utilizatorului
+    setHomeTeam(prev => ({
       ...prev,
-      { home: homeTeam.shortName, away: awayTeam.shortName, score: finalScore },
-    ]);
+      name: newManager.teamName,
+      stadium: newManager.stadiumName,
+      lineup: newSquad.slice(0, 11),
+      bench: newSquad.slice(11)
+    }));
+
+    // Actualizăm și simularea
+    setMatchResult(simulateMatch(
+      { ...homeTeam, name: newManager.teamName, lineup: newSquad.slice(0, 11) },
+      awayTeam,
+      1002
+    ));
+
+    setActiveTab('control');
   };
 
-  // Bucla de simulare live
-  const maxMinute = 90 + (matchResult.extraTime || 0);
-
+  // Gestionare simulare meci
   useEffect(() => {
     if (isPlaying && !isFinished) {
+      const totalMatchLength = 90 + (matchResult.extraTime || 0);
+
       timerRef.current = setInterval(() => {
-        setCurrentMinute((prevMin) => {
-          if (prevMin >= maxMinute - 1) {
-            clearInterval(timerRef.current!);
-            finalizeMatch(matchResult.finalScore);
-            return maxMinute;
+        setCurrentMinute((prev) => {
+          if (prev >= totalMatchLength) {
+            setIsPlaying(false);
+            setIsFinished(true);
+            return totalMatchLength;
           }
-          return prevMin + 1;
+          return prev + 1;
         });
       }, speedMs);
     } else {
@@ -167,12 +159,11 @@ export default function Home() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPlaying, isFinished, speedMs, matchResult.finalScore, maxMinute]);
+  }, [isPlaying, isFinished, speedMs, matchResult]);
 
-  // Controale
   const handleTogglePlay = () => {
     if (isFinished) return;
-    setIsPlaying((prev) => !prev);
+    setIsPlaying(!isPlaying);
   };
 
   const handleChangeSpeed = (newSpeed: number) => {
@@ -180,119 +171,197 @@ export default function Home() {
   };
 
   const handleInstantFinish = () => {
-    if (isFinished) return;
-    if (timerRef.current) clearInterval(timerRef.current);
-    finalizeMatch(matchResult.finalScore);
+    const totalMin = 90 + (matchResult.extraTime || 0);
+    setCurrentMinute(totalMin);
+    setIsPlaying(false);
+    setIsFinished(true);
   };
 
-  const handleResetMatch = (overrideConfig?: CorruptionConfig) => {
+  const handleResetMatch = (customSeed?: number, corruptionConfig = buildCorruptionConfig()) => {
     if (timerRef.current) clearInterval(timerRef.current);
-    const newSeed = Date.now() + Math.floor(Math.random() * 10000);
-    const config = overrideConfig !== undefined ? overrideConfig : buildCorruptionConfig();
-    const newSim = simulateMatch(homeTeam, awayTeam, newSeed, config);
-    setMatchResult(newSim);
-    setCurrentMinute(1);
-    setIsFinished(false);
     setIsPlaying(false);
+    setIsFinished(false);
+    setCurrentMinute(1);
+    const newSeed = customSeed ?? Math.floor(Math.random() * 1000000);
+    setMatchResult(simulateMatch(homeTeam, awayTeam, newSeed, corruptionConfig));
   };
 
   const handleApplyCorruptionAndRestart = (
-    newBribeTeam: 'none' | 'home' | 'away',
-    newAmount: number,
-    newBiscotto: boolean
+    teamChoice: 'none' | 'home' | 'away',
+    amount: number,
+    biscotto: boolean
   ) => {
-    setBribeTeam(newBribeTeam);
-    setBribeAmount(newAmount);
-    setBiscottoEnabled(newBiscotto);
-    const config = buildCorruptionConfig(newBribeTeam, newAmount, newBiscotto);
-    handleResetMatch(config);
+    setBribeTeam(teamChoice);
+    setBribeAmount(amount);
+    setBiscottoEnabled(biscotto);
+    const newConfig = buildCorruptionConfig(teamChoice, amount, biscotto);
+    handleResetMatch(undefined, newConfig);
   };
 
-  // Preluăm snapshot-ul curent al minutului
-  const snapshotIdx = Math.max(
-    0,
-    Math.min(matchResult.minuteSnapshots.length - 1, currentMinute - 1)
-  );
-  const currentSnapshot =
-    matchResult.minuteSnapshots[snapshotIdx] ||
-    matchResult.minuteSnapshots[0];
+  const currentScore: [number, number] = [
+    matchResult.allEvents.filter(
+      (e) =>
+        e.minute <= currentMinute &&
+        e.teamId === homeTeam.id &&
+        (e.type === 'GOAL' || e.type === 'BISCOTTO_BETRAYAL' || (e.type === 'BRIBED_DECISION' && e.description.includes('transformă')) || (e.type === 'PENALTY' && !e.description.includes('RATAT')))
+    ).length,
+    matchResult.allEvents.filter(
+      (e) =>
+        e.minute <= currentMinute &&
+        e.teamId === awayTeam.id &&
+        (e.type === 'GOAL' || e.type === 'BISCOTTO_BETRAYAL' || (e.type === 'BRIBED_DECISION' && e.description.includes('transformă')) || (e.type === 'PENALTY' && !e.description.includes('RATAT')))
+    ).length,
+  ];
 
-  const currentScore: [number, number] = currentSnapshot
-    ? (currentSnapshot.score as [number, number])
-    : [0, 0];
-  const currentStats = currentSnapshot ? currentSnapshot.stats : matchResult.finalStats;
+  const currentSnapshot = matchResult.minuteSnapshots?.find((s) => s.minute === currentMinute);
+  const currentStats = currentSnapshot?.stats || matchResult.finalStats;
+
+  const managerCountry = activeManager ? (COUNTRIES[activeManager.countryCode] || COUNTRIES.RO) : COUNTRIES.RO;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 antialiased selection:bg-blue-600 selection:text-white">
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-emerald-500 text-lg font-black text-white shadow-lg">
-              ⚽
+    <div className="min-h-screen bg-zinc-950 font-sans text-zinc-100 antialiased selection:bg-blue-600 selection:text-white pb-16">
+      
+      {/* ─── Header Principal Unificat ─── */}
+      <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          
+          {/* Logo & Info Club Activ */}
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('control')}>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-md shadow-blue-500/20 text-lg">
+                ⚽
+              </div>
+              <div>
+                <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+                  <span>FootbALL-IN</span>
+                  <span className="rounded bg-blue-900/60 text-blue-400 px-1.5 py-0.2 text-[9px] font-mono uppercase border border-blue-700/40">
+                    SoccerProject SP
+                  </span>
+                </h1>
+                <p className="text-[10px] text-zinc-400 font-medium flex items-center gap-1">
+                  <span>{managerCountry.flag}</span>
+                  <span className="text-zinc-300 font-semibold">{activeManager ? activeManager.teamName : homeTeam.name}</span>
+                  <span>•</span>
+                  <span className="text-emerald-400 font-mono">€{finances.balance.toLocaleString()}</span>
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-base font-black tracking-tight text-white flex items-center gap-2">
-                SOCCERMANAGER <span className="rounded bg-blue-600/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-400 border border-blue-500/30">PROTOTIP V1 + CORUPȚIE</span>
-              </h1>
-              <p className="text-[11px] text-zinc-400">Motor Determinist &bull; Arbitraj &bull; Culise & Anchetă</p>
+
+            {/* Selector Limbă în Mobile */}
+            <div className="flex sm:hidden items-center gap-1 bg-zinc-900 p-1 rounded-lg border border-zinc-800 text-[10px]">
+              <button 
+                onClick={() => handleLanguageChange('ro')}
+                className={`px-2 py-0.5 rounded font-bold ${language === 'ro' ? 'bg-blue-600 text-white' : 'text-zinc-400'}`}
+              >
+                RO
+              </button>
+              <button 
+                onClick={() => handleLanguageChange('en')}
+                className={`px-2 py-0.5 rounded font-bold ${language === 'en' ? 'bg-blue-600 text-white' : 'text-zinc-400'}`}
+              >
+                EN
+              </button>
             </div>
           </div>
 
-          {/* Tab Navigation */}
-          <nav className="flex rounded-xl bg-zinc-900 p-1 border border-zinc-800 text-xs">
-            <button
-              onClick={() => setActiveTab('match')}
-              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-bold transition-all ${
-                activeTab === 'match'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <span>🏟️</span> Meciul Zilei
-            </button>
-            <button
-              onClick={() => setActiveTab('tactics')}
-              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-bold transition-all ${
-                activeTab === 'tactics'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <span>📋</span> Primul 11 & Teren
-            </button>
-            <button
-              onClick={() => setActiveTab('training')}
-              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-bold transition-all ${
-                activeTab === 'training'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <span>🏋️</span> Antrenament & Refacere
-            </button>
-            <button
-              onClick={() => setActiveTab('standings')}
-              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-bold transition-all ${
-                activeTab === 'standings'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
+          {/* Navigare Tab-uri & Limbă Desktop */}
+          <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+            <nav className="flex items-center gap-1 rounded-xl bg-zinc-900/90 p-1 border border-zinc-800 text-xs shadow-inner">
+              <button
+                onClick={() => setActiveTab('match')}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                  activeTab === 'match'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span>🏟️</span> {t('nav_match')}
+              </button>
 
-              <span>🏆</span> Clasament ({standings[0].played} Etape)
-            </button>
-          </nav>
+              <button
+                onClick={() => setActiveTab('tactics')}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                  activeTab === 'tactics'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span>📋</span> {t('nav_tactics')}
+              </button>
+
+              <button
+                onClick={() => setActiveTab('training')}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                  activeTab === 'training'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span>🏃</span> {t('nav_training')}
+              </button>
+
+              <button
+                onClick={() => setActiveTab('standings')}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                  activeTab === 'standings'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span>🏆</span> {t('nav_standings')}
+              </button>
+
+              <button
+                onClick={() => setActiveTab('staff')}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                  activeTab === 'staff'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span>👔</span> {t('nav_staff')}
+              </button>
+
+              <button
+                onClick={() => setActiveTab('control')}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                  activeTab === 'control'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span>⚙️</span> {t('nav_control')}
+              </button>
+            </nav>
+
+            {/* Selector Limbă Desktop */}
+            <div className="hidden sm:flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-zinc-800 text-xs">
+              <button 
+                onClick={() => handleLanguageChange('ro')}
+                className={`px-2.5 py-1 rounded-lg font-bold transition ${language === 'ro' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'}`}
+                title="Română"
+              >
+                🇷🇴 RO
+              </button>
+              <button 
+                onClick={() => handleLanguageChange('en')}
+                className={`px-2.5 py-1 rounded-lg font-bold transition ${language === 'en' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'}`}
+                title="English"
+              >
+                🇬🇧 EN
+              </button>
+            </div>
+          </div>
+
         </div>
       </header>
 
-      {/* Main Content Area */}
+      {/* ─── Main Content Area ─── */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
 
-        {/* Tab-ul 1: Meciul Zilei (Tabelă de Marcaj, Live Ticker, Timeline, Statistici) */}
+        {/* Tab-ul 1: Meciul Zilei */}
         {activeTab === 'match' && (
           <div className="space-y-6">
-            {/* Tabela de Marcaj a Meciului */}
             <ScoreBoard
               homeTeam={homeTeam}
               awayTeam={awayTeam}
@@ -308,8 +377,7 @@ export default function Home() {
               pitch={matchResult.pitch}
             />
 
-            {/* Panou Culise & Biroul Patronului (Corupție & Înțelegeri) */}
-
+            {/* Biroul Patronului (Culise & Arbitraj) */}
             <div className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950/20 p-4 shadow-xl">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800/80 pb-3">
                 <div className="flex items-center gap-2.5">
@@ -327,7 +395,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Status curent culise */}
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-zinc-500">Scenariu activ:</span>
                   {bribeTeam !== 'none' ? (
@@ -346,18 +413,17 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Butoane de acțiune rapidă pentru teste */}
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
                 <button
                   onClick={() => handleApplyCorruptionAndRestart('none', bribeAmount, false)}
                   className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-all ${
                     bribeTeam === 'none' && !biscottoEnabled
-                      ? 'border-emerald-500/50 bg-emerald-950/40 text-emerald-300 shadow-md ring-1 ring-emerald-500/30'
+                      ? 'border-emerald-500/50 bg-emerald-950/50 text-emerald-300 shadow-md ring-1 ring-emerald-500/30'
                       : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
                   }`}
                 >
-                  <span>🕊️</span>
-                  <span>Meci Curat (Fair-Play)</span>
+                  <span>⚖️</span>
+                  <span>Joc Curat (Sportiv)</span>
                 </button>
 
                 <button
@@ -409,7 +475,7 @@ export default function Home() {
               onResetMatch={() => handleResetMatch()}
             />
 
-            {/* Timeline 0' - 90' (+ Extra Time) */}
+            {/* Timeline */}
             <MatchTimeline
               currentMinute={currentMinute}
               timelineEvents={matchResult.timelineEvents}
@@ -418,7 +484,7 @@ export default function Home() {
               extraTime={matchResult.extraTime}
             />
 
-            {/* Grid 2 Coloane: Ticker Live Text vs Statistici Meci */}
+            {/* Ticker & Statistici */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-7">
                 <LiveTextTicker
@@ -438,7 +504,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tab-ul 2: Așezare Tactică & Primul 11 */}
+        {/* Tab-ul 2: Așezare Tactică */}
         {activeTab === 'tactics' && (
           <div className="space-y-6">
             <PitchLineupView 
@@ -452,7 +518,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tab-ul 3: Antrenament & Refacere Maseur (SoccerProject Style) */}
+        {/* Tab-ul 3: Antrenament & Refacere */}
         {activeTab === 'training' && (
           <div className="space-y-6">
             <TrainingManagementView
@@ -465,16 +531,57 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tab-ul 4: Clasament & Istoric Meciuri */}
+        {/* Tab-ul 4: Clasament Divizia A (16 Echipe, Steaguri, Boți SP) */}
         {activeTab === 'standings' && (
           <div className="space-y-6">
             <LeagueTableView
-              standings={standings}
-              matchHistory={matchHistory}
+              divisionTeams={divisionTeams}
+              language={language}
+              onOpenTeamDetails={(team) => {
+                if (team.isBot) {
+                  setIsRegistrationModalOpen(true);
+                }
+              }}
             />
           </div>
         )}
 
+        {/* Tab-ul 5: Personal & Buget (Staff) */}
+        {activeTab === 'staff' && (
+          <div className="space-y-6">
+            <StaffManagementView
+              finances={finances}
+              language={language}
+              onFinancesUpdate={(newFinances) => {
+                setFinances(newFinances);
+                saveClubFinances(newFinances);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Tab-ul 6: Panou de Control Manager */}
+        {activeTab === 'control' && (
+          <div className="space-y-6">
+            <ControlPanelView
+              manager={activeManager}
+              finances={finances}
+              language={language}
+              onLanguageChange={handleLanguageChange}
+              onOpenRegistration={() => setIsRegistrationModalOpen(true)}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+            />
+          </div>
+        )}
+
+        {/* Modal Înregistrare Manager & Preluare Echipă Bot */}
+        <ManagerRegistrationModal
+          isOpen={isRegistrationModalOpen}
+          onClose={() => setIsRegistrationModalOpen(false)}
+          botTeams={divisionTeams}
+          language={language}
+          onRegistrationComplete={handleRegistrationComplete}
+        />
 
         {/* Modal Fișă Jucător SoccerProject */}
         <PlayerDetailsModal
@@ -483,8 +590,8 @@ export default function Home() {
           onClose={() => setSelectedPlayer(null)}
           isForeignClub={isForeignPlayer}
         />
+
       </main>
     </div>
-
   );
 }

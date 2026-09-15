@@ -7,6 +7,7 @@ import {
   SquadAssignment,
   FootType
 } from './types';
+import { generatePlayerNameForCountry } from './countries';
 
 /**
  * Atribute principale (Key Skills) pe fiecare post conform SoccerProject:
@@ -215,4 +216,54 @@ export function generateSPPlayer(params: {
     fitness: 100,
     form: 8
   };
+}
+
+/**
+ * Generează un lot complet și echilibrat de 24 de jucători conform SoccerProject
+ * (3 Portari, 8 Fundași, 8 Mijlocași, 5 Atacanți) cu nume specifice țării clubului
+ */
+export function generateRealisticSquad(countryCode = 'RO'): Player[] {
+  const positions: PositionType[] = [
+    // 3 Portari
+    'GK', 'GK', 'GK',
+    // 8 Fundași
+    'LB', 'LB', 'CB', 'CB', 'CB', 'CB', 'RB', 'RB',
+    // 8 Mijlocași
+    'LM', 'LM', 'CM', 'CM', 'CM', 'CM', 'RM', 'RM',
+    // 5 Atacanți
+    'LF', 'CF', 'CF', 'CF', 'RF'
+  ];
+
+  let currentNumber = 1;
+  const squad: Player[] = [];
+
+  for (let i = 0; i < positions.length; i++) {
+    const pos = positions[i];
+    const name = generatePlayerNameForCountry(countryCode);
+    const num = currentNumber++;
+    // O distribuție realistă: câțiva tineri talentați (18-21), bază de seniori (24-29), și 2-3 veterani (30-33)
+    let tier: 'YOUTH' | 'REGULAR' | 'STAR' = 'REGULAR';
+    let age = 23 + Math.floor(Math.random() * 6);
+    if (i === 3 || i === 11 || i === 20) {
+      tier = 'STAR'; // 3 vedete în lot
+      age = 25 + Math.floor(Math.random() * 4);
+    } else if (i === 2 || i === 10 || i === 23) {
+      tier = 'YOUTH'; // 3 juniori de perspectivă
+      age = 18 + Math.floor(Math.random() * 3);
+    }
+
+    const player = generateSPPlayer({
+      id: `p-${countryCode.toLowerCase()}-${num}-${Date.now()}`,
+      name,
+      number: num,
+      position: pos,
+      age,
+      tier,
+      squad: i < 16 ? 'A' : 'B'
+    });
+
+    squad.push(player);
+  }
+
+  return squad;
 }
