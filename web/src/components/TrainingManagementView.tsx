@@ -244,7 +244,8 @@ export const TrainingManagementView: React.FC<TrainingManagementViewProps> = ({
                         onChange={(e) => setPlayerTargets({ ...playerTargets, [player.id]: e.target.value as SkillName })}
                         className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-blue-500"
                       >
-                        <option value="">Auto (Principal)</option>
+                        <option value="">Auto (Cel mai mic)</option>
+
                         {SKILL_OPTIONS.map(opt => {
                           const s = player.skills ? player.skills[opt.key] : null;
                           const isCapped = s?.isTrainedMax;

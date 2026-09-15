@@ -34,30 +34,23 @@ export function trainPlayerSession(
 ): TrainingProgressReport | null {
   if (!player.skills) return null;
 
-  // Dacă nu este specificat un atribut, antrenăm primul atribut principal neplafonat sau cel mai mic atribut
+  // Dacă nu este specificat un atribut (modul Auto), antrenăm ÎNTOTDEAUNA cel mai mic atribut neplafonat!
   let skillToTrain: SkillName = targetedSkill || 'stamina';
   
   if (!targetedSkill) {
-    // Căutăm atributele principale neplafonate
-    const uncappedPrimary = (Object.keys(player.skills) as SkillName[]).filter(
-      k => player.skills[k].isPrimary && !player.skills[k].isTrainedMax
-    );
-    if (uncappedPrimary.length > 0) {
-      skillToTrain = uncappedPrimary[0];
+    // Găsim toate atributele neplafonate și îl selectăm pe cel cu valoarea minimă absolută
+    const uncappedSkills = (Object.keys(player.skills) as SkillName[])
+      .filter(k => !player.skills[k].isTrainedMax)
+      .sort((a, b) => player.skills[a].value - player.skills[b].value);
+
+    if (uncappedSkills.length > 0) {
+      skillToTrain = uncappedSkills[0]; // Cel mai mic atribut neplafonat!
     } else {
-      // Căutăm orice atribut neplafonat cu valoarea cea mai mică
-      const uncappedAny = (Object.keys(player.skills) as SkillName[])
-        .filter(k => !player.skills[k].isTrainedMax)
-        .sort((a, b) => player.skills[a].value - player.skills[b].value);
-      
-      if (uncappedAny.length > 0) {
-        skillToTrain = uncappedAny[0];
-      } else {
-        // Jucătorul este 100% complet plafonat pe toate cele 10 atribute!
-        return null;
-      }
+      // Jucătorul este 100% complet plafonat pe toate cele 10 atribute (toate barele roșii)
+      return null;
     }
   }
+
 
   const skillDetail = player.skills[skillToTrain];
   if (skillDetail.isTrainedMax) {
