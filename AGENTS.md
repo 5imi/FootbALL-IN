@@ -24,10 +24,17 @@ Fiecare agent care preia sarcini în acest proiect este **OBLIGAT** să citeasc�
 
 ### 🚀 Directivă Automată: Commit & GitHub Push după Fiecare Implementare Majoră:
 * **Fiecare implementare majoră, mecanică nouă sau pas semnificativ finalizat și verificat (build fără erori + teste rulate) TREBUIE URMĂT IMEDIAT de `git commit` și `git push` pe GitHub.**
-* Asistentul AI are obligația să realizeze automat `git add` (excluzând fișierele interzise), `git commit` cu mesaj clar și convențional (`feat: ...`, `fix: ...`) și `git push origin <branch>`.
+* Asistentul AI are obligația să realizeze automat `git add` (excluzând fișierele interzise), `git commit` și `git push origin <branch>`.
+* **Standard Mesaj Commit**: În descrierea/corpul commit-ului se va include întotdeauna mențiunea:
+  ```
+  feat/fix: <titlu modificare>
+  
+  [proiect in dezvoltare]
+  ```
 * Utilizatorul nu trebuie să mai reamintească sau să ceară manual push-ul pe GitHub.
 
 ---
+
 
 
 ## 🔬 2. Reguli de Analiză și Cercetare (Research First)
