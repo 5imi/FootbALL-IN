@@ -288,26 +288,28 @@ export default function Home() {
 
       {/* Main Content Area */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
-        {/* Tabela de Marcaj Permanent Vizibilă pe Tab-ul Meci */}
-        <ScoreBoard
-          homeTeam={homeTeam}
-          awayTeam={awayTeam}
-          currentScore={currentScore}
-          currentMinute={currentMinute}
-          isFinished={isFinished}
-          isPlaying={isPlaying}
-          referee={matchResult.referee}
-          corruption={matchResult.corruption}
-          events={matchResult.allEvents}
-          extraTime={matchResult.extraTime}
-          weather={matchResult.weather}
-          pitch={matchResult.pitch}
-        />
 
-        {/* Tab-ul 1: Meciul Zilei (Live Ticker, Timeline, Statistici) */}
+        {/* Tab-ul 1: Meciul Zilei (Tabelă de Marcaj, Live Ticker, Timeline, Statistici) */}
         {activeTab === 'match' && (
           <div className="space-y-6">
+            {/* Tabela de Marcaj a Meciului */}
+            <ScoreBoard
+              homeTeam={homeTeam}
+              awayTeam={awayTeam}
+              currentScore={currentScore}
+              currentMinute={currentMinute}
+              isFinished={isFinished}
+              isPlaying={isPlaying}
+              referee={matchResult.referee}
+              corruption={matchResult.corruption}
+              events={matchResult.allEvents}
+              extraTime={matchResult.extraTime}
+              weather={matchResult.weather}
+              pitch={matchResult.pitch}
+            />
+
             {/* Panou Culise & Biroul Patronului (Corupție & Înțelegeri) */}
+
             <div className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950/20 p-4 shadow-xl">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800/80 pb-3">
                 <div className="flex items-center gap-2.5">
