@@ -12,14 +12,15 @@ import { MatchStatsView } from '../components/MatchStatsView';
 import { LeagueTableView } from '../components/LeagueTableView';
 import { PitchLineupView } from '../components/PitchLineupView';
 import { PlayerDetailsModal } from '../components/PlayerDetailsModal';
-
+import { TrainingManagementView } from '../components/TrainingManagementView';
 
 export default function Home() {
   const [homeTeam] = useState(initialTeams[0]);
   const [awayTeam] = useState(initialTeams[1]);
 
-  // Tab activ: 'match' | 'tactics' | 'standings'
-  const [activeTab, setActiveTab] = useState<'match' | 'tactics' | 'standings'>('match');
+  // Tab activ: 'match' | 'tactics' | 'training' | 'standings'
+  const [activeTab, setActiveTab] = useState<'match' | 'tactics' | 'training' | 'standings'>('match');
+
 
   // Configurație Corupție / Culise
   const [bribeTeam, setBribeTeam] = useState<'none' | 'home' | 'away'>('none');
@@ -261,6 +262,16 @@ export default function Home() {
               <span>📋</span> Primul 11 & Teren
             </button>
             <button
+              onClick={() => setActiveTab('training')}
+              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-bold transition-all ${
+                activeTab === 'training'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <span>🏋️</span> Antrenament & Refacere
+            </button>
+            <button
               onClick={() => setActiveTab('standings')}
               className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-bold transition-all ${
                 activeTab === 'standings'
@@ -268,6 +279,7 @@ export default function Home() {
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
+
               <span>🏆</span> Clasament ({standings[0].played} Etape)
             </button>
           </nav>
@@ -438,7 +450,20 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tab-ul 3: Clasament & Istoric Meciuri */}
+        {/* Tab-ul 3: Antrenament & Refacere Maseur (SoccerProject Style) */}
+        {activeTab === 'training' && (
+          <div className="space-y-6">
+            <TrainingManagementView
+              players={[...homeTeam.lineup, ...homeTeam.bench]}
+              onOpenPlayerCard={(p) => {
+                setSelectedPlayer(p);
+                setIsForeignPlayer(false);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Tab-ul 4: Clasament & Istoric Meciuri */}
         {activeTab === 'standings' && (
           <div className="space-y-6">
             <LeagueTableView
@@ -447,6 +472,7 @@ export default function Home() {
             />
           </div>
         )}
+
 
         {/* Modal Fișă Jucător SoccerProject */}
         <PlayerDetailsModal
