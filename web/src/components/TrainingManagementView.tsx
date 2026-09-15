@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Player, SkillName } from '../engine/types';
+import { Player, SkillName, PositionType } from '../engine/types';
 import { TrainerStaff, PhysioStaff, TrainingProgressReport, trainWholeSquad } from '../engine/trainingEngine';
-import { recoverSquadFitness, RecoveryReport, calculateInjuryRisk } from '../engine/recoveryEngine';
+import { recoverSquadFitness } from '../engine/recoveryEngine';
 
 interface TrainingManagementViewProps {
   players: Player[];
   onOpenPlayerCard: (player: Player) => void;
 }
 
-const SKILL_OPTIONS: { key: SkillName; label: string }[] = [
+const FIELD_SKILL_OPTIONS: { key: SkillName; label: string }[] = [
   { key: 'stamina', label: 'Rezistență' },
   { key: 'speed', label: 'Viteză' },
   { key: 'technique', label: 'Tehnică' },
@@ -18,46 +18,61 @@ const SKILL_OPTIONS: { key: SkillName; label: string }[] = [
   { key: 'strength', label: 'Forță' },
   { key: 'heading', label: 'Cap' },
   { key: 'tackling', label: 'Deposedări' },
-  { key: 'vision', label: 'Viziune / Reflexe' },
+  { key: 'vision', label: 'Viziune' },
+];
+
+const GK_SKILL_OPTIONS: { key: SkillName; label: string }[] = [
+  { key: 'stamina', label: 'Rezistență' },
+  { key: 'speed', label: 'Viteză' },
+  { key: 'technique', label: 'Tehnică' },
+  { key: 'clearance', label: 'Degajări' },
+  { key: 'strength', label: 'Detentă' },
+  { key: 'heading', label: 'Curaj' },
+  { key: 'tackling', label: 'Joc de picior' },
+  { key: 'vision', label: 'Reflex' },
 ];
 
 export const TrainingManagementView: React.FC<TrainingManagementViewProps> = ({
   players,
   onOpenPlayerCard
 }) => {
-  // Staff Club
-  const [trainer, setTrainer] = useState<TrainerStaff>({
+  const trainer: TrainerStaff = {
     id: 'tr-1',
-    name: 'Gheorghe Hagi (Antrenor Principal)',
-    quality: 92, // 92% calitate
-    salaryWeekly: 12500
-  });
+    name: 'Kuan Chun Hang',
+    quality: 94,
+    salaryWeekly: 14500
+  };
 
-  const [physio, setPhysio] = useState<PhysioStaff>({
+  const physio: PhysioStaff = {
     id: 'ph-1',
-    name: 'Dr. Pompiliu Popescu (Kinetoterapeut)',
-    quality: 88, // 88% calitate
-    salaryWeekly: 8500
-  });
+    name: 'Dr. Pompiliu Popescu',
+    quality: 90,
+    salaryWeekly: 9000
+  };
 
-  // Filtru pe loturi: ALL | A | B | C | D
-  const [squadFilter, setSquadFilter] = useState<'ALL' | 'A' | 'B' | 'C' | 'D'>('ALL');
+  // State: id-urile jucătorilor expandati (accordion stil SP)
+  const [expandedPlayerIds, setExpandedPlayerIds] = useState<Record<string, boolean>>({});
 
-  // Selecție skill per jucător (inițializat din localStorage dacă există)
-  const [playerTargets, setPlayerTargets] = useState<Record<string, SkillName>>(() => {
+  // Selecții atribute din localStorage
+  const [playerTargets, setPlayerTargets] = useState<Record<string, SkillName | 'NONE'>>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('footballin_training_targets');
         if (saved) return JSON.parse(saved);
       } catch (e) {
-        console.error('Eroare la încărcare training targets:', e);
+        console.error(e);
       }
     }
     return {};
   });
 
-  // Salvare automată în localStorage la fiecare modificare
-  const handleUpdateTarget = (playerId: string, skill: SkillName | '') => {
+  const [notification, setNotification] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedPlayerIds(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleUpdateTarget = (playerId: string, skill: SkillName | 'NONE' | '') => {
     const updated = { ...playerTargets };
     if (!skill) {
       delete updated[playerId];
@@ -70,266 +85,310 @@ export const TrainingManagementView: React.FC<TrainingManagementViewProps> = ({
     }
   };
 
+  const handleTrainAutomatic = () => {
+    // În modul automat, antrenorul selectează cel mai mic atribut neplafonat
+    const reports = trainWholeSquad(players, trainer, {});
+    setNotification(`✔️ Antrenorul ${trainer.name} a generat sesiunea automată pentru ${reports.length} jucători!`);
+    setTimeout(() => setNotification(null), 5000);
+  };
+
   const handleManualSave = () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('footballin_training_targets', JSON.stringify(playerTargets));
     }
-    setNotification('💾 Planul de antrenament a fost salvat cu succes în memorie!');
+    setNotification('💾 Planul de antrenament a fost salvat cu succes!');
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const handleResetToAuto = () => {
-    setPlayerTargets({});
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('footballin_training_targets');
-    }
-    setNotification('🔄 Toți jucătorii au fost resetați pe modul Auto (cel mai mic atribut)!');
-    setTimeout(() => setNotification(null), 4000);
-  };
+  // Separare pe categorii exacte SP
+  const gks = players.filter(p => p.position === 'GK');
+  const defs = players.filter(p => ['LB', 'CB', 'RB'].includes(p.position));
+  const mids = players.filter(p => ['LM', 'CM', 'RM'].includes(p.position));
+  const atts = players.filter(p => ['LF', 'CF', 'RF'].includes(p.position));
 
-  // Rapoarte recente
-  const [trainingReports, setTrainingReports] = useState<TrainingProgressReport[]>([]);
-  const [recoveryReports, setRecoveryReports] = useState<RecoveryReport[]>([]);
-  const [notification, setNotification] = useState<string | null>(null);
+  const renderPlayerRow = (p: Player) => {
+    const isExpanded = !!expandedPlayerIds[p.id];
+    const isInjured = (p.seasonStats?.injuries ?? 0) > 0 && p.condition < 40;
+    const isGk = p.position === 'GK';
+    const skillList = isGk ? GK_SKILL_OPTIONS : FIELD_SKILL_OPTIONS;
+    const currentTarget = playerTargets[p.id];
 
-  const filteredPlayers = players.filter(
-    p => squadFilter === 'ALL' || p.squad === squadFilter
-  );
+    return (
+      <div key={p.id} className="border border-slate-700/60 bg-slate-900/90 rounded-md overflow-hidden text-xs">
+        {/* Bara compactă a jucătorului */}
+        <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 hover:bg-slate-850 transition">
+          {/* Poziție și Nume */}
+          <div 
+            onClick={() => toggleExpand(p.id)}
+            className="flex items-center gap-2 cursor-pointer flex-1 select-none"
+          >
+            <span className={`font-bold text-[11px] px-2 py-0.5 rounded ${
+              isGk ? 'bg-amber-600 text-white' :
+              p.position.startsWith('C') ? 'bg-amber-500/80 text-slate-950 font-black' :
+              'bg-amber-400 text-slate-950 font-black'
+            }`}>
+              {p.position}
+            </span>
+            <span className="text-blue-400 hover:text-blue-300 font-semibold">
+              {p.number}. {p.name}
+            </span>
+            {p.nickname && <span className="text-[10px] text-slate-400 italic">„{p.nickname}”</span>}
+            <span className="text-[10px] text-slate-500 ml-1">
+              {isExpanded ? '▲' : '▼'}
+            </span>
+          </div>
 
+          {/* Stare medicală / Validare și Selector Atribut */}
+          <div className="flex items-center gap-2">
+            {isInjured ? (
+              <span className="text-rose-500 font-bold" title="Accidentat">❌ 🚑</span>
+            ) : (
+              <span className="text-emerald-400 font-bold" title="Apt de antrenament">✔️</span>
+            )}
 
-  const handleTrainSquad = () => {
-    const reports = trainWholeSquad(players, trainer, playerTargets);
-    setTrainingReports(reports);
-    setNotification(`🏋️ Antrenament finalizat! ${reports.length} jucători au progresat în atribute.`);
-    setTimeout(() => setNotification(null), 5000);
-  };
+            <select
+              value={currentTarget ?? ''}
+              onChange={(e) => handleUpdateTarget(p.id, e.target.value as SkillName | 'NONE')}
+              className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+            >
+              <option value="">Auto (Cel mai mic)</option>
+              <option value="NONE">Nimic</option>
+              {skillList.map(opt => {
+                const s = p.skills ? p.skills[opt.key] : null;
+                const isCapped = s?.isTrainedMax;
+                return (
+                  <option 
+                    key={opt.key} 
+                    value={opt.key}
+                    className={isCapped ? 'text-rose-500 font-bold bg-slate-950' : 'text-slate-200 bg-slate-950'}
+                  >
+                    {opt.label} {isCapped ? '(ROȘU 🔒)' : ''}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        </div>
 
-  const handleRecoverSquad = () => {
-    const reports = recoverSquadFitness(players, physio, 12);
-    setRecoveryReports(reports);
-    setNotification(`💆 Sesiune maseur finalizată! Condiția fizică a întregului lot a fost refăcută.`);
-    setTimeout(() => setNotification(null), 5000);
+        {/* Mini-Fișa Detaliată SP (când este apăsat rândul) */}
+        {isExpanded && (
+          <div className="p-3 bg-slate-950/80 border-t border-slate-800 flex items-start gap-4">
+            {/* Lupa pentru fișa completă */}
+            <button
+              onClick={() => onOpenPlayerCard(p)}
+              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition flex flex-col items-center gap-1 text-[10px] text-slate-300 mt-1"
+              title="Deschide fișa completă a jucătorului"
+            >
+              <span className="text-base">🔍</span>
+              <span>Fișă SP</span>
+            </button>
+
+            {/* Grilă 4 Coloane Identică cu SoccerProject */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1 text-[11px]">
+              
+              {/* Coloana 1: Date generale */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-slate-400">
+                  <span>Aniversare:</span>
+                  <span className="font-semibold text-slate-200">{p.birthDate} [{p.age}]</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Echipă:</span>
+                  <span className="font-bold text-blue-400">Lot {p.squad}</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Formă:</span>
+                  <span className="font-mono text-emerald-400 font-semibold">{p.recentPerformances.join('-')}</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Cea mai bună:</span>
+                  <span className="font-mono text-amber-400 font-bold">{p.bestPerformance}</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Calitate Globală:</span>
+                  <span className="font-mono font-bold text-white">{p.overallQuality}%</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Agresivitate:</span>
+                  <span className="font-mono text-rose-400 font-bold">{p.aggression}%</span>
+                </div>
+              </div>
+
+              {/* Coloana 2: Stare fizică & Atribute Bază */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-slate-400">
+                  <span>Experiență:</span>
+                  <span className="font-mono text-amber-400 font-semibold">{p.experience}%</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Moral:</span>
+                  <span className={`font-mono font-semibold ${p.morale > 70 ? 'text-rose-400' : 'text-slate-400'}`}>{p.morale}%</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Condiție:</span>
+                  <span className={`font-mono font-bold ${p.condition < 75 ? 'text-amber-400' : 'text-emerald-400'}`}>{p.condition}%</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span className={p.skills.stamina.isTrainedMax ? 'text-rose-400 font-bold' : ''}>Rezistență:</span>
+                  <span className={`font-mono ${p.skills.stamina.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.stamina.value}%</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span className={p.skills.speed.isTrainedMax ? 'text-rose-400 font-bold' : ''}>Viteză:</span>
+                  <span className={`font-mono ${p.skills.speed.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.speed.value}%</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span className={p.skills.technique.isTrainedMax ? 'text-rose-400 font-bold' : ''}>Tehnică:</span>
+                  <span className={`font-mono ${p.skills.technique.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.technique.value}%</span>
+                </div>
+              </div>
+
+              {/* Coloana 3 & 4: Atribute specifice postului */}
+              {isGk ? (
+                <>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-400">
+                      <span className={p.skills.heading.isTrainedMax ? 'text-rose-400 font-bold' : ''}>Curaj:</span>
+                      <span className={`font-mono ${p.skills.heading.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.heading.value}%</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>Flexibilitate:</span>
+                      <span className="font-mono text-slate-200">{Math.round(p.skills.technique.value * 0.9)}%</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span className={p.skills.strength.isTrainedMax ? 'text-rose-400 font-bold' : ''}>Detentă:</span>
+                      <span className={`font-mono ${p.skills.strength.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.strength.value}%</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-400">
+                      <span className={p.skills.clearance.isTrainedMax ? 'text-rose-400 font-bold' : ''}>Degajări:</span>
+                      <span className={`font-mono ${p.skills.clearance.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.clearance.value}%</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span className={p.skills.tackling.isTrainedMax ? 'text-rose-400 font-bold' : ''}>Joc de picior:</span>
+                      <span className={`font-mono ${p.skills.tackling.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.tackling.value}%</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span className={p.skills.vision.isTrainedMax ? 'text-rose-400 font-bold' : 'font-bold text-white'}>Reflex:</span>
+                      <span className={`font-mono font-bold ${p.skills.vision.isTrainedMax ? 'text-rose-400' : 'text-white'}`}>{p.skills.vision.value}%</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-400">
+                      <span className={p.skills.passing.isTrainedMax ? 'text-rose-400 font-bold' : p.skills.passing.isPrimary ? 'font-bold text-white' : ''}>Pase:</span>
+                      <span className={`font-mono ${p.skills.passing.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.passing.value}%</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span className={p.skills.shooting.isTrainedMax ? 'text-rose-400 font-bold' : p.skills.shooting.isPrimary ? 'font-bold text-white' : ''}>Șuturi:</span>
+                      <span className={`font-mono ${p.skills.shooting.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.shooting.value}%</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span className={p.skills.clearance.isTrainedMax ? 'text-rose-400 font-bold' : ''}>Respingeri:</span>
+                      <span className={`font-mono ${p.skills.clearance.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.clearance.value}%</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-400">
+                      <span className={p.skills.strength.isTrainedMax ? 'text-rose-400 font-bold' : ''}>Forță:</span>
+                      <span className={`font-mono ${p.skills.strength.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.strength.value}%</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span className={p.skills.heading.isTrainedMax ? 'text-rose-400 font-bold' : p.skills.heading.isPrimary ? 'font-bold text-white' : ''}>Cap:</span>
+                      <span className={`font-mono ${p.skills.heading.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.heading.value}%</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span className={p.skills.tackling.isTrainedMax ? 'text-rose-400 font-bold' : p.skills.tackling.isPrimary ? 'font-bold text-white' : ''}>Deposedări:</span>
+                      <span className={`font-mono ${p.skills.tackling.isTrainedMax ? 'text-rose-400 font-bold' : 'text-slate-200'}`}>{p.skills.tackling.value}%</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <div className="space-y-6 font-sans text-slate-200">
       
-      {/* Panou Staff & Acțiuni Rapide */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        
-        {/* Card Antrenor */}
-        <div className="bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 shadow-lg flex flex-col justify-between">
-          <div>
-            <div className="text-[11px] uppercase tracking-wider text-blue-400 font-bold">Staff Tehnic • Antrenor</div>
-            <h4 className="text-base font-bold text-white mt-1">{trainer.name}</h4>
-            <div className="flex items-center justify-between text-xs mt-3">
-              <span className="text-slate-400">Calitate Antrenament:</span>
-              <span className="font-bold text-emerald-400 font-mono text-sm">{trainer.quality}%</span>
-            </div>
-            <div className="w-full bg-slate-950 h-2 rounded-full mt-1 overflow-hidden">
-              <div className="bg-emerald-500 h-full" style={{ width: `${trainer.quality}%` }} />
-            </div>
-            <div className="text-[11px] text-slate-500 mt-2">Salariu: €{trainer.salaryWeekly.toLocaleString()}/săpt</div>
-          </div>
-          <button 
-            onClick={handleTrainSquad}
-            className="mt-4 w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs tracking-wider uppercase transition shadow-md hover:shadow-blue-500/20"
-          >
-            🏋️ Simulează Antrenament Lot
-          </button>
-        </div>
+      {/* Header Pagina SP */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-3">
+        <h3 className="text-base font-bold text-white border-b border-slate-800 pb-2">
+          Antrenament condus de <span className="text-blue-400">{trainer.name}</span> (Calitate: {trainer.quality}%)
+        </h3>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Pe această pagină poți antrena jucătorii, ceea ce este foarte important pentru echipa ta. Îi poți antrena manual alegând atributul sau poți lăsa pe antrenor să o facă. Un jucător se antrenează de 5 ori pe zi și va crește la calitatea selectată în acel moment.
+        </p>
 
-        {/* Card Maseur / Physio */}
-        <div className="bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 shadow-lg flex flex-col justify-between">
+        {/* Modul Automatic */}
+        <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="text-[11px] uppercase tracking-wider text-teal-400 font-bold">Staff Medical • Maseur / Physio</div>
-            <h4 className="text-base font-bold text-white mt-1">{physio.name}</h4>
-            <div className="flex items-center justify-between text-xs mt-3">
-              <span className="text-slate-400">Eficiență Recuperare:</span>
-              <span className="font-bold text-teal-400 font-mono text-sm">{physio.quality}%</span>
-            </div>
-            <div className="w-full bg-slate-950 h-2 rounded-full mt-1 overflow-hidden">
-              <div className="bg-teal-500 h-full" style={{ width: `${physio.quality}%` }} />
-            </div>
-            <div className="text-[11px] text-slate-500 mt-2">Salariu: €{physio.salaryWeekly.toLocaleString()}/săpt</div>
+            <span className="text-xs font-bold text-white block">Automatic</span>
+            <span className="text-xs text-slate-400">Poți să-l pui pe {trainer.name} să genereze o sesiune de antrenament automată (țintind cel mai mic atribut).</span>
           </div>
-          <button 
-            onClick={handleRecoverSquad}
-            className="mt-4 w-full py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-lg text-xs tracking-wider uppercase transition shadow-md hover:shadow-teal-500/20"
-          >
-            💆 Sesiune Refacere Maseur (12h)
-          </button>
-        </div>
-
-        {/* Card Sumar Rotație & Loturi */}
-        <div className="bg-slate-900/90 border border-slate-700/80 rounded-xl p-4 shadow-lg flex flex-col justify-between">
-          <div>
-            <div className="text-[11px] uppercase tracking-wider text-amber-400 font-bold">Strategie Rotație • SP System</div>
-            <h4 className="text-base font-bold text-white mt-1">Echipe Presetate (A, B, C, D)</h4>
-            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-              Jucătorii obosiți sub <span className="text-amber-400 font-semibold">75% condiție</span> riscă rupturi musculare. Folosește Lotul C/D pentru amicale și tineret.
-            </p>
-          </div>
-          <div className="flex gap-1.5 mt-4">
-            {(['ALL', 'A', 'B', 'C', 'D'] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setSquadFilter(s)}
-                className={`flex-1 py-1.5 rounded text-xs font-bold transition border ${
-                  squadFilter === s
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow'
-                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
-                }`}
-              >
-                {s === 'ALL' ? 'Toți' : `Lot ${s}`}
-              </button>
-            ))}
+          <div className="flex gap-2">
+            <button
+              onClick={handleTrainAutomatic}
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-xs transition shadow"
+            >
+              Automatic
+            </button>
+            <button
+              onClick={handleManualSave}
+              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-xs transition shadow flex items-center gap-1"
+            >
+              <span>💾</span> Salvează
+            </button>
           </div>
         </div>
-
       </div>
 
-      {/* Alertă Notificare Progres */}
+      {/* Alertă Notificare */}
       {notification && (
-        <div className="bg-emerald-900/80 border border-emerald-500/50 text-emerald-200 text-xs px-4 py-2.5 rounded-lg shadow animate-fade-in flex items-center justify-between">
+        <div className="bg-emerald-900/90 border border-emerald-500/50 text-emerald-200 text-xs px-4 py-2 rounded shadow flex items-center justify-between">
           <span>{notification}</span>
-          <button onClick={() => setNotification(null)} className="text-emerald-400 hover:text-white">✕</button>
+          <button onClick={() => setNotification(null)}>✕</button>
         </div>
       )}
 
-      {/* Tabel Jucători și Setare Antrenamente */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-        <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-          <div>
-            <h3 className="font-bold text-sm text-white uppercase tracking-wider">Registru Jucători & Focare de Antrenament</h3>
-            <span className="text-xs text-slate-400">Apasă pe oricare jucător pentru a-i deschide fișa completă SoccerProject cu bare roșii</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleManualSave}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs tracking-wider transition shadow flex items-center gap-1.5"
-              title="Salvează manual planul de antrenament în memorie"
-            >
-              <span>💾</span> Salvează Planul
-            </button>
-            <button
-              onClick={handleResetToAuto}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg text-xs tracking-wider transition border border-slate-700"
-              title="Setează toți jucătorii pe Auto (cel mai mic atribut)"
-            >
-              🔄 Resetează pe Auto
-            </button>
-            <span className="text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-lg font-mono border border-slate-700/60">
-              {filteredPlayers.length} jucători
-            </span>
+      {/* Secțiuni SP: Portari, Fundași, Mijlocași, Atacanți */}
+      <div className="space-y-5">
+        {/* Portari */}
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Portari</h4>
+          <div className="space-y-1.5">
+            {gks.map(renderPlayerRow)}
           </div>
         </div>
 
+        {/* Fundași */}
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fundași</h4>
+          <div className="space-y-1.5">
+            {defs.map(renderPlayerRow)}
+          </div>
+        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-800/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-700">
-              <tr>
-                <th className="py-2.5 px-3">#</th>
-                <th>Nume Jucător</th>
-                <th>Vârstă</th>
-                <th>Post</th>
-                <th>Lot</th>
-                <th>Condiție (Fitness)</th>
-                <th>Moral</th>
-                <th>Calitate</th>
-                <th>EXP</th>
-                <th>Atribut Antrenat</th>
-                <th className="text-right px-4">Acțiune</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800 font-sans">
-              {filteredPlayers.map((player) => {
-                const injuryRisk = calculateInjuryRisk(player);
-                const currentTarget = playerTargets[player.id];
+        {/* Mijlocași */}
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mijlocași</h4>
+          <div className="space-y-1.5">
+            {mids.map(renderPlayerRow)}
+          </div>
+        </div>
 
-                return (
-                  <tr key={player.id} className="hover:bg-slate-800/40 transition">
-                    <td className="py-2.5 px-3 font-mono font-bold text-slate-400">{player.number}</td>
-                    <td className="font-bold text-white flex items-center gap-1.5 py-2.5">
-                      <span 
-                        onClick={() => onOpenPlayerCard(player)} 
-                        className="cursor-pointer hover:text-blue-400 hover:underline flex items-center gap-1"
-                      >
-                        {player.name}
-                        {player.nickname && <span className="text-[10px] text-amber-400 font-normal italic">„{player.nickname}”</span>}
-                      </span>
-                    </td>
-                    <td className="text-slate-300">{player.age} ani</td>
-                    <td>
-                      <span className="bg-amber-400/20 text-amber-300 font-bold px-1.5 py-0.5 rounded text-[10px] border border-amber-400/30">
-                        {player.position}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
-                        player.squad === 'A' ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40' :
-                        player.squad === 'B' ? 'bg-indigo-600/30 text-indigo-300' :
-                        'bg-slate-800 text-slate-400'
-                      }`}>
-                        Lot {player.squad}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-mono font-bold ${
-                          injuryRisk.riskLevel === 'DANGER' ? 'text-rose-400 animate-pulse' :
-                          injuryRisk.riskLevel === 'WARNING' ? 'text-amber-400' : 'text-emerald-400'
-                        }`}>
-                          {player.condition}%
-                        </span>
-                        {injuryRisk.riskLevel === 'DANGER' && <span title="Risc mare de accidentare!">⚠️</span>}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`font-mono ${player.morale > 70 ? 'text-rose-400' : 'text-slate-500'}`}>
-                        {player.morale}%
-                      </span>
-                    </td>
-                    <td>
-                      <span className="font-mono font-bold text-blue-400">{player.overallQuality}%</span>
-                    </td>
-                    <td>
-                      <span className="font-mono text-amber-400 font-semibold">{player.experience}%</span>
-                    </td>
-                    <td>
-                      <select
-                        value={currentTarget || ''}
-                        onChange={(e) => handleUpdateTarget(player.id, e.target.value as SkillName)}
-                        className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-blue-500"
-                      >
-
-                        <option value="">Auto (Cel mai mic)</option>
-
-                        {SKILL_OPTIONS.map(opt => {
-                          const s = player.skills ? player.skills[opt.key] : null;
-                          const isCapped = s?.isTrainedMax;
-                          return (
-                            <option key={opt.key} value={opt.key} disabled={isCapped}>
-                              {opt.label} ({s ? `${s.value}%` : ''} {isCapped ? '🔒 ROȘU' : ''})
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </td>
-                    <td className="text-right px-4">
-                      <button
-                        onClick={() => onOpenPlayerCard(player)}
-                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 text-[11px] font-semibold transition"
-                      >
-                        Fișă SP 🔍
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {/* Atacanți */}
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Atacanți</h4>
+          <div className="space-y-1.5">
+            {atts.map(renderPlayerRow)}
+          </div>
         </div>
       </div>
 
