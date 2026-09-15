@@ -43,8 +43,49 @@ export const TrainingManagementView: React.FC<TrainingManagementViewProps> = ({
   // Filtru pe loturi: ALL | A | B | C | D
   const [squadFilter, setSquadFilter] = useState<'ALL' | 'A' | 'B' | 'C' | 'D'>('ALL');
 
-  // Selecție skill per jucător
-  const [playerTargets, setPlayerTargets] = useState<Record<string, SkillName>>({});
+  // Selecție skill per jucător (inițializat din localStorage dacă există)
+  const [playerTargets, setPlayerTargets] = useState<Record<string, SkillName>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('footballin_training_targets');
+        if (saved) return JSON.parse(saved);
+      } catch (e) {
+        console.error('Eroare la încărcare training targets:', e);
+      }
+    }
+    return {};
+  });
+
+  // Salvare automată în localStorage la fiecare modificare
+  const handleUpdateTarget = (playerId: string, skill: SkillName | '') => {
+    const updated = { ...playerTargets };
+    if (!skill) {
+      delete updated[playerId];
+    } else {
+      updated[playerId] = skill;
+    }
+    setPlayerTargets(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('footballin_training_targets', JSON.stringify(updated));
+    }
+  };
+
+  const handleManualSave = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('footballin_training_targets', JSON.stringify(playerTargets));
+    }
+    setNotification('💾 Planul de antrenament a fost salvat cu succes în memorie!');
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const handleResetToAuto = () => {
+    setPlayerTargets({});
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('footballin_training_targets');
+    }
+    setNotification('🔄 Toți jucătorii au fost resetați pe modul Auto (cel mai mic atribut)!');
+    setTimeout(() => setNotification(null), 4000);
+  };
 
   // Rapoarte recente
   const [trainingReports, setTrainingReports] = useState<TrainingProgressReport[]>([]);
@@ -54,6 +95,7 @@ export const TrainingManagementView: React.FC<TrainingManagementViewProps> = ({
   const filteredPlayers = players.filter(
     p => squadFilter === 'ALL' || p.squad === squadFilter
   );
+
 
   const handleTrainSquad = () => {
     const reports = trainWholeSquad(players, trainer, playerTargets);
@@ -162,10 +204,27 @@ export const TrainingManagementView: React.FC<TrainingManagementViewProps> = ({
             <h3 className="font-bold text-sm text-white uppercase tracking-wider">Registru Jucători & Focare de Antrenament</h3>
             <span className="text-xs text-slate-400">Apasă pe oricare jucător pentru a-i deschide fișa completă SoccerProject cu bare roșii</span>
           </div>
-          <span className="text-xs text-slate-400 bg-slate-800 px-3 py-1 rounded-full font-mono">
-            {filteredPlayers.length} jucători afișați
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleManualSave}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs tracking-wider transition shadow flex items-center gap-1.5"
+              title="Salvează manual planul de antrenament în memorie"
+            >
+              <span>💾</span> Salvează Planul
+            </button>
+            <button
+              onClick={handleResetToAuto}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg text-xs tracking-wider transition border border-slate-700"
+              title="Setează toți jucătorii pe Auto (cel mai mic atribut)"
+            >
+              🔄 Resetează pe Auto
+            </button>
+            <span className="text-xs text-slate-400 bg-slate-800 px-3 py-1.5 rounded-lg font-mono border border-slate-700/60">
+              {filteredPlayers.length} jucători
+            </span>
+          </div>
         </div>
+
 
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
@@ -241,9 +300,10 @@ export const TrainingManagementView: React.FC<TrainingManagementViewProps> = ({
                     <td>
                       <select
                         value={currentTarget || ''}
-                        onChange={(e) => setPlayerTargets({ ...playerTargets, [player.id]: e.target.value as SkillName })}
+                        onChange={(e) => handleUpdateTarget(player.id, e.target.value as SkillName)}
                         className="bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-blue-500"
                       >
+
                         <option value="">Auto (Cel mai mic)</option>
 
                         {SKILL_OPTIONS.map(opt => {
