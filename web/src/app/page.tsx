@@ -226,10 +226,10 @@ export default function Home() {
       
       {/* ─── Header Principal Unificat ─── */}
       <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-[1450px] flex-col lg:flex-row items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
           
           {/* Logo & Info Club Activ */}
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start shrink-0">
             <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('control')}>
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-md shadow-blue-500/20 text-lg">
                 ⚽
@@ -249,27 +249,11 @@ export default function Home() {
                 </p>
               </div>
             </div>
-
-            {/* Selector Limbă în Mobile */}
-            <div className="flex sm:hidden items-center gap-1 bg-zinc-900 p-1 rounded-lg border border-zinc-800 text-[10px]">
-              <button 
-                onClick={() => handleLanguageChange('ro')}
-                className={`px-2 py-0.5 rounded font-bold ${language === 'ro' ? 'bg-blue-600 text-white' : 'text-zinc-400'}`}
-              >
-                RO
-              </button>
-              <button 
-                onClick={() => handleLanguageChange('en')}
-                className={`px-2 py-0.5 rounded font-bold ${language === 'en' ? 'bg-blue-600 text-white' : 'text-zinc-400'}`}
-              >
-                EN
-              </button>
-            </div>
           </div>
 
           {/* Navigare Tab-uri & Limbă Desktop */}
-          <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-            <nav className="flex items-center gap-1 rounded-xl bg-zinc-900/90 p-1 border border-zinc-800 text-xs shadow-inner">
+          <div className="flex items-center gap-2.5 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <nav className="flex items-center gap-1 rounded-xl bg-zinc-900/90 p-1 border border-zinc-800 text-xs shadow-inner shrink-0">
               <button
                 onClick={() => setActiveTab('match')}
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
@@ -357,8 +341,8 @@ export default function Home() {
               }}
             />
 
-            {/* Selector Limbă Desktop */}
-            <div className="hidden sm:flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-zinc-800 text-xs">
+            {/* Selector Unic Limbă */}
+            <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-zinc-800 text-xs">
               <button 
                 onClick={() => handleLanguageChange('ro')}
                 className={`px-2.5 py-1 rounded-lg font-bold transition ${language === 'ro' ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:text-white'}`}
@@ -380,7 +364,7 @@ export default function Home() {
       </header>
 
       {/* ─── Main Content Area ─── */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
+      <main className="mx-auto max-w-[1450px] px-4 py-6 sm:px-6 space-y-6">
 
         {/* Spațiu Publicitar / Partener Oficial (Monetizare) */}
         <AdBanner format="leaderboard" className="mb-2" />

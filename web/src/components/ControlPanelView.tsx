@@ -54,29 +54,11 @@ export const ControlPanelView: React.FC<ControlPanelViewProps> = ({
             </div>
           </div>
 
-          {/* Selector Limbă Internațională */}
-          <div className="flex items-center gap-3 self-start md:self-auto bg-zinc-950/80 p-1.5 rounded-xl border border-zinc-800">
-            <span className="text-xs text-zinc-400 px-2 font-medium">🌐 {t('cp_language')}:</span>
-            <button
-              onClick={() => onLanguageChange('ro')}
-              className={`px-3 py-1 text-xs rounded-lg font-bold transition flex items-center gap-1 ${
-                language === 'ro' 
-                  ? 'bg-blue-600 text-white shadow' 
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <span>🇷🇴</span> RO
-            </button>
-            <button
-              onClick={() => onLanguageChange('en')}
-              className={`px-3 py-1 text-xs rounded-lg font-bold transition flex items-center gap-1 ${
-                language === 'en' 
-                  ? 'bg-blue-600 text-white shadow' 
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <span>🇬🇧</span> EN
-            </button>
+          {/* Statut Licență Club Divizia A */}
+          <div className="flex items-center gap-2 self-start md:self-auto bg-zinc-950/80 px-3 py-2 rounded-xl border border-zinc-800 text-xs">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="text-zinc-400 font-medium">Statut:</span>
+            <span className="font-bold text-white">Licențiat Divizia A</span>
           </div>
         </div>
 
