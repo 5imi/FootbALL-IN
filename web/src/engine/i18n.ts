@@ -8,6 +8,7 @@ export const TRANSLATIONS = {
     nav_training: '🏃 Antrenament & Refacere',
     nav_standings: '🏆 Clasament Divizia A',
     nav_staff: '👔 Personal & Buget',
+    nav_transfers: '🤝 Piață Transferuri',
     nav_control: '⚙️ Panou Control',
 
     // Înregistrare („Crează-ți propria echipă”)
@@ -104,6 +105,7 @@ export const TRANSLATIONS = {
     nav_training: '🏃 Training & Recovery',
     nav_standings: '🏆 Division A Standings',
     nav_staff: '👔 Staff & Finances',
+    nav_transfers: '🤝 Transfer Market',
     nav_control: '⚙️ Control Panel',
 
     // Registration ("Create your own team")

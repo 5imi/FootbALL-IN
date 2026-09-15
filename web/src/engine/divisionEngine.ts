@@ -155,3 +155,36 @@ export function takeoverBotTeam(
 
   return { manager, teams: updatedTeams, squad };
 }
+
+/**
+ * Alocă automat o echipă bot aleatorie pentru noul manager (Regulă Oficială SP)
+ * Managerul nu își alege poziția sau echipa; algoritmul jocului o alege aleatoriu.
+ */
+export function assignRandomBotTeam(
+  username: string,
+  teamName: string,
+  stadiumName: string,
+  email: string,
+  countryCode: string
+): { manager: ManagerProfile; teams: DivisionTeam[]; squad: Player[]; assignedTeam: DivisionTeam } {
+  const currentTeams = loadDivisionTeams();
+  const botTeams = currentTeams.filter(t => t.isBot);
+
+  // Dacă există echipe bot, alegem una la întâmplare
+  const targetBot = botTeams.length > 0 
+    ? botTeams[Math.floor(Math.random() * botTeams.length)]
+    : currentTeams[currentTeams.length - 1]; // Fallback ultima echipă
+
+  const result = takeoverBotTeam(
+    targetBot.id,
+    username,
+    teamName,
+    stadiumName,
+    email,
+    countryCode
+  );
+
+  const assignedTeam = result.teams.find(t => t.id === targetBot.id)!;
+  return { ...result, assignedTeam };
+}
+

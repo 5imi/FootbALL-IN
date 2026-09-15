@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { COUNTRIES_LIST, COUNTRIES } from '../engine/countries';
-import { DivisionTeam, takeoverBotTeam, ManagerProfile } from '../engine/divisionEngine';
+import { DivisionTeam, assignRandomBotTeam, ManagerProfile } from '../engine/divisionEngine';
 import { Player } from '../engine/types';
 import { Language, getTranslation } from '../engine/i18n';
+import { signInWithGoogle } from '../engine/authEngine';
 
 interface ManagerRegistrationModalProps {
   isOpen: boolean;
@@ -26,11 +27,29 @@ export const ManagerRegistrationModal: React.FC<ManagerRegistrationModalProps> =
   const [stadiumName, setStadiumName] = useState('');
   const [email, setEmail] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('RO');
-  const [selectedBotTeamId, setSelectedBotTeamId] = useState(botTeams[0]?.id || 'div-11');
   const [noOtherAccountsConfirmed, setNoOtherAccountsConfirmed] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const handleGoogleQuickRegister = () => {
+    const authUser = signInWithGoogle();
+    const gUsername = authUser.displayName.replace(/\s+/g, '').toLowerCase();
+    const gTeam = `FC ${authUser.displayName}`;
+    const gStadium = `Arena ${authUser.displayName.split(' ')[0] || 'Central'}`;
+    
+    // Alocare automată aleatorie
+    const result = assignRandomBotTeam(
+      gUsername,
+      gTeam,
+      gStadium,
+      authUser.email,
+      selectedCountry
+    );
+
+    onRegistrationComplete(result.manager, result.squad);
+    onClose();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,9 +62,8 @@ export const ManagerRegistrationModal: React.FC<ManagerRegistrationModalProps> =
       return;
     }
 
-    // Preluarea echipei bot
-    const result = takeoverBotTeam(
-      selectedBotTeamId,
+    // Jocul alocă o echipă bot aleatorie (Regulă oficială SP)
+    const result = assignRandomBotTeam(
       username.trim(),
       teamName.trim(),
       stadiumName.trim(),
@@ -89,6 +107,37 @@ export const ManagerRegistrationModal: React.FC<ManagerRegistrationModalProps> =
             {errorMessage}
           </div>
         )}
+
+        {/* Înregistrare Instantă cu Google */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-lg shadow-sm">
+              <svg className="h-5 w-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white">Vrei să începi direct?</div>
+              <div className="text-[11px] text-zinc-400">Crează-ți clubul cu 1 singur click prin contul tău Google / Gmail.</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleGoogleQuickRegister}
+            className="w-full sm:w-auto rounded-xl bg-white hover:bg-zinc-100 text-zinc-900 px-4 py-2 text-xs font-extrabold transition shadow-md whitespace-nowrap active:scale-95"
+          >
+            Înregistrează-te cu Google
+          </button>
+        </div>
+
+        <div className="relative flex items-center justify-center my-2">
+          <div className="border-t border-zinc-800 w-full"></div>
+          <span className="bg-zinc-950 px-3 text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Sau completează manual</span>
+          <div className="border-t border-zinc-800 w-full"></div>
+        </div>
 
         {/* Formular Înregistrare */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -145,7 +194,7 @@ export const ManagerRegistrationModal: React.FC<ManagerRegistrationModalProps> =
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="manager@fotbal.ro"
+                placeholder="manager@gmail.com"
                 className="w-full bg-zinc-950 border border-zinc-700 text-zinc-100 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
               />
             </div>
@@ -168,22 +217,19 @@ export const ManagerRegistrationModal: React.FC<ManagerRegistrationModalProps> =
               </select>
             </div>
 
-            {/* 6. Echipa Bot de Preluat */}
+            {/* 6. Alocare Automată Echipă Bot (Regulă SP) */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-zinc-300">
-                {t('reg_bot_takeover_select')}
+              <label className="text-xs font-semibold text-zinc-300 flex items-center justify-between">
+                <span>Alocare Divizia A</span>
+                <span className="text-[10px] text-emerald-400 font-normal">🎲 Aleatoriu</span>
               </label>
-              <select
-                value={selectedBotTeamId}
-                onChange={(e) => setSelectedBotTeamId(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-700 text-zinc-100 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 font-mono"
-              >
-                {botTeams.filter(b => b.isBot).map((b) => (
-                  <option key={b.id} value={b.id} className="bg-zinc-950 text-white">
-                    🤖 {b.name} (Locul {botTeams.indexOf(b) + 1}, {b.points} pct)
-                  </option>
-                ))}
-              </select>
+              <div className="w-full rounded-lg border border-zinc-800 bg-zinc-900/90 p-2.5 text-xs text-zinc-300 flex items-center gap-2">
+                <span className="text-base">🤖</span>
+                <div>
+                  <div className="font-bold text-white text-[11px]">Echipă Bot Alocată Aleatoriu</div>
+                  <div className="text-[10px] text-zinc-400">Jocul îți atribuie automat un loc disponibil de bot.</div>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -191,7 +237,7 @@ export const ManagerRegistrationModal: React.FC<ManagerRegistrationModalProps> =
           {/* Notă explicativă Bot Takeover */}
           <div className="p-3 bg-blue-950/30 border border-blue-800/40 rounded-lg text-[11px] text-blue-300/90 leading-relaxed flex items-center gap-2">
             <span className="text-base">ℹ️</span>
-            <span>{t('reg_bot_takeover_note')}</span>
+            <span>Conform regulilor jocului, noul tău club va prelua în mod automat una dintre echipele bot din Divizia A și va primi un lot inițial de 24 de jucători.</span>
           </div>
 
           {/* Checkbox No Multi-Accounts */}

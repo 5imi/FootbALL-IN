@@ -10,7 +10,7 @@ interface ControlPanelViewProps {
   language: Language;
   onLanguageChange: (lang: Language) => void;
   onOpenRegistration: () => void;
-  onNavigateTab: (tab: 'match' | 'tactics' | 'training' | 'standings' | 'staff') => void;
+  onNavigateTab: (tab: 'match' | 'tactics' | 'training' | 'standings' | 'staff' | 'transfers' | 'control') => void;
 }
 
 export const ControlPanelView: React.FC<ControlPanelViewProps> = ({
@@ -135,7 +135,7 @@ export const ControlPanelView: React.FC<ControlPanelViewProps> = ({
         <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 px-1">
           {t('cp_quick_actions')}
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <button
             onClick={() => onNavigateTab('match')}
             className="p-4 bg-zinc-900/90 hover:bg-zinc-850 border border-zinc-800 rounded-xl transition text-left space-y-1 shadow-md group"
@@ -170,6 +170,15 @@ export const ControlPanelView: React.FC<ControlPanelViewProps> = ({
             <span className="text-xl">👔</span>
             <h4 className="text-xs font-bold text-white group-hover:text-blue-400 transition">Personal & Staff</h4>
             <p className="text-[11px] text-zinc-400">Cele 7 roluri, recrutare candidați & cursuri</p>
+          </button>
+
+          <button
+            onClick={() => onNavigateTab('transfers')}
+            className="p-4 bg-zinc-900/90 hover:bg-zinc-850 border border-zinc-800 rounded-xl transition text-left space-y-1 shadow-md group"
+          >
+            <span className="text-xl">🤝</span>
+            <h4 className="text-xs font-bold text-white group-hover:text-blue-400 transition">Piață Transferuri</h4>
+            <p className="text-[11px] text-zinc-400">Jucători de la cluburi & liberi de contract</p>
           </button>
         </div>
       </div>

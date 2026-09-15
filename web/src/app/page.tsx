@@ -16,6 +16,9 @@ import { TrainingManagementView } from '../components/TrainingManagementView';
 import { StaffManagementView } from '../components/StaffManagementView';
 import { ControlPanelView } from '../components/ControlPanelView';
 import { ManagerRegistrationModal } from '../components/ManagerRegistrationModal';
+import { TransferMarketView } from '../components/TransferMarketView';
+import { GoogleAuthButton } from '../components/GoogleAuthButton';
+import { AdBanner } from '../components/AdBanner';
 import { 
   loadDivisionTeams, 
   loadActiveManager, 
@@ -71,8 +74,8 @@ export default function Home() {
 
   const [awayTeam] = useState(initialTeams[1]);
 
-  // Tab activ: 'match' | 'tactics' | 'training' | 'standings' | 'staff' | 'control'
-  const [activeTab, setActiveTab] = useState<'match' | 'tactics' | 'training' | 'standings' | 'staff' | 'control'>('standings');
+  // Tab activ: 'match' | 'tactics' | 'training' | 'standings' | 'staff' | 'transfers' | 'control'
+  const [activeTab, setActiveTab] = useState<'match' | 'tactics' | 'training' | 'standings' | 'staff' | 'transfers' | 'control'>('standings');
 
   // Configurație Corupție / Culise
   const [bribeTeam, setBribeTeam] = useState<'none' | 'home' | 'away'>('none');
@@ -323,6 +326,17 @@ export default function Home() {
               </button>
 
               <button
+                onClick={() => setActiveTab('transfers')}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
+                  activeTab === 'transfers'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span>🤝</span> {t('nav_transfers')}
+              </button>
+
+              <button
                 onClick={() => setActiveTab('control')}
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold transition-all whitespace-nowrap ${
                   activeTab === 'control'
@@ -333,6 +347,15 @@ export default function Home() {
                 <span>⚙️</span> {t('nav_control')}
               </button>
             </nav>
+
+            {/* Google / Gmail Login Button */}
+            <GoogleAuthButton 
+              onAuthChange={(u) => {
+                if (u && !activeManager) {
+                  setIsRegistrationModalOpen(true);
+                }
+              }}
+            />
 
             {/* Selector Limbă Desktop */}
             <div className="hidden sm:flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-zinc-800 text-xs">
@@ -358,6 +381,9 @@ export default function Home() {
 
       {/* ─── Main Content Area ─── */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
+
+        {/* Spațiu Publicitar / Partener Oficial (Monetizare) */}
+        <AdBanner format="leaderboard" className="mb-2" />
 
         {/* Tab-ul 1: Meciul Zilei */}
         {activeTab === 'match' && (
@@ -555,6 +581,34 @@ export default function Home() {
               onFinancesUpdate={(newFinances) => {
                 setFinances(newFinances);
                 saveClubFinances(newFinances);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Tab-ul 6: Piață de Transferuri (SoccerProject Style) */}
+        {activeTab === 'transfers' && (
+          <div className="space-y-6">
+            <TransferMarketView
+              language={language}
+              activeManager={activeManager}
+              finances={finances}
+              userSquad={[...homeTeam.lineup, ...homeTeam.bench]}
+              onPlayerAcquired={(newPlayer) => {
+                setHomeTeam(prev => {
+                  const updatedBench = [...prev.bench, newPlayer];
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('footballin_user_squad', JSON.stringify([...prev.lineup, ...updatedBench]));
+                  }
+                  return {
+                    ...prev,
+                    bench: updatedBench
+                  };
+                });
+                setFinances(loadClubFinances());
+              }}
+              onFinancesUpdated={() => {
+                setFinances(loadClubFinances());
               }}
             />
           </div>

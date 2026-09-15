@@ -26,6 +26,10 @@ export const POSITION_PRIMARY_SKILLS: Record<PositionType, { primary: SkillName[
     primary: ['tackling', 'heading'],
     secondary: ['strength', 'clearance']
   },
+  SW: {
+    primary: ['tackling', 'clearance'],
+    secondary: ['speed', 'heading']
+  },
   RB: {
     primary: ['tackling', 'heading'],
     secondary: ['speed', 'passing']

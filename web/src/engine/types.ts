@@ -1,4 +1,4 @@
-export type PositionType = 'GK' | 'LB' | 'CB' | 'RB' | 'LM' | 'CM' | 'RM' | 'LF' | 'CF' | 'RF';
+export type PositionType = 'GK' | 'LB' | 'CB' | 'SW' | 'RB' | 'LM' | 'CM' | 'RM' | 'LF' | 'CF' | 'RF';
 
 export type TacticalStyle = 'PASSING' | 'WING_PLAY' | 'KICK_AND_RUSH' | 'DEFENSIVE';
 
@@ -277,4 +277,27 @@ export interface LeagueStandingRow {
   goalsAgainst: number;
   goalDiff: number;
   points: number;
+}
+
+// ─── Piață Transferuri (SoccerProject Style) ───
+export interface TransferBid {
+  id: string;
+  bidderClub: string;
+  amount: number;
+  time: string;
+}
+
+export interface TransferListing {
+  id: string;
+  player: Player;
+  sellerClub: string;        // Numele clubului vânzător sau "Liber de contract"
+  sellerCountry: string;     // ISO code (ex: 'RO', 'BE', 'DE')
+  buyerClub: string | null;  // Clubul cu cea mai mare ofertă activă sau null
+  currentBid: number;        // Valoarea ofertei maxime curente în EUR
+  buyNowPrice?: number;      // Preț opțional de cumpărare instantă
+  quality: number;           // Calitate globală (ex: 82%)
+  age: number;               // Vârstă (18 - 35)
+  deadline: string;          // Ex: "15 Sep (23:45)"
+  isFreeAgent: boolean;      // true dacă jucătorul e liber de contract
+  bids: TransferBid[];       // Istoricul ofertelor plasate
 }
