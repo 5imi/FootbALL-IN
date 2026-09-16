@@ -22,6 +22,8 @@ interface TransferMarketViewProps {
   userSquad: Player[];
   onPlayerAcquired?: (player: Player) => void;
   onFinancesUpdated?: () => void;
+  onRequireAuth?: (message: string) => void;
+  isGuest?: boolean;
 }
 
 export function TransferMarketView({
@@ -30,7 +32,9 @@ export function TransferMarketView({
   finances,
   userSquad,
   onPlayerAcquired,
-  onFinancesUpdated
+  onFinancesUpdated,
+  onRequireAuth,
+  isGuest = false,
 }: TransferMarketViewProps) {
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
 
@@ -80,6 +84,11 @@ export function TransferMarketView({
   // Plasează ofertă de licitație
   const handleConfirmBid = () => {
     if (!biddingListing) return;
+    if (isGuest && onRequireAuth) {
+      setBiddingListing(null);
+      onRequireAuth('Pentru a licita și cumpăra jucători de la alte cluburi, trebuie să deții un club înregistrat!');
+      return;
+    }
     const myClub = activeManager?.teamName || 'Clubul Meu';
     
     if (bidAmount > finances.balance) {
@@ -101,6 +110,11 @@ export function TransferMarketView({
   // Semnează liber de contract
   const handleConfirmSignFreeAgent = () => {
     if (!signingListing) return;
+    if (isGuest && onRequireAuth) {
+      setSigningListing(null);
+      onRequireAuth('Pentru a semna jucători liberi de contract și a primi bugetul de 5.000.000 €, înregistrează-ți clubul gratuit!');
+      return;
+    }
     const myClub = activeManager?.teamName || 'Clubul Meu';
 
     if (signingBonus > finances.balance) {
@@ -123,6 +137,11 @@ export function TransferMarketView({
   // Pune un jucător din lot pe lista de transferuri
   const handleConfirmSell = () => {
     if (!selectedPlayerToSell) return;
+    if (isGuest && onRequireAuth) {
+      setIsSellModalOpen(false);
+      onRequireAuth('Pentru a pune jucători pe lista de transferuri, trebuie să fii managerul unei echipe înregistrate!');
+      return;
+    }
     const myClub = activeManager?.teamName || 'Clubul Meu';
     const myCountry = activeManager?.countryCode || 'RO';
 
@@ -188,7 +207,13 @@ export function TransferMarketView({
             </div>
 
             <button
-              onClick={() => setIsSellModalOpen(true)}
+              onClick={() => {
+                if (isGuest && onRequireAuth) {
+                  onRequireAuth('Pentru a lista jucători la vânzare pe piața de transferuri, trebuie să fii manager înregistrat!');
+                  return;
+                }
+                setIsSellModalOpen(true);
+              }}
               className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-bold text-white transition shadow-md whitespace-nowrap active:scale-95"
             >
               <span>➕</span> Pune Jucător la Vânzare
@@ -431,6 +456,10 @@ export function TransferMarketView({
                         ) : item.isFreeAgent ? (
                           <button
                             onClick={() => {
+                              if (isGuest && onRequireAuth) {
+                                onRequireAuth('Pentru a semna jucători liberi de contract și a primi bugetul de 5.000.000 €, înregistrează-ți clubul gratuit!');
+                                return;
+                              }
                               setSigningListing(item);
                               setSigningBonus(item.buyNowPrice || 500000);
                             }}
@@ -441,6 +470,10 @@ export function TransferMarketView({
                         ) : (
                           <button
                             onClick={() => {
+                              if (isGuest && onRequireAuth) {
+                                onRequireAuth('Pentru a licita și transfera jucători de la alte cluburi, trebuie să deții o echipă înregistrată!');
+                                return;
+                              }
                               setBiddingListing(item);
                               setBidAmount(Math.round(item.currentBid * 1.1));
                             }}

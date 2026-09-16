@@ -5,6 +5,8 @@ import { TrainerStaff, PhysioStaff, getLowestUncappedSkill } from '../engine/tra
 interface TrainingManagementViewProps {
   players: Player[];
   onOpenPlayerCard: (player: Player) => void;
+  isGuest?: boolean;
+  onRequireAuth?: (message: string) => void;
 }
 
 // Atribute jucători de câmp conform SoccerProject
@@ -35,7 +37,9 @@ const GK_SKILL_OPTIONS: { key: SkillName; label: string }[] = [
 
 export const TrainingManagementView: React.FC<TrainingManagementViewProps> = ({
   players,
-  onOpenPlayerCard
+  onOpenPlayerCard,
+  isGuest = false,
+  onRequireAuth,
 }) => {
   const trainer: TrainerStaff = {
     id: 'tr-1',
@@ -70,6 +74,11 @@ export const TrainingManagementView: React.FC<TrainingManagementViewProps> = ({
   };
 
   const handleTrainAutomatic = () => {
+    if (isGuest && onRequireAuth) {
+      onRequireAuth('Înregistrează-ți clubul gratuit pentru a avea acces la centrul de antrenament și a dezvolta lotul!');
+      return;
+    }
+
     const updated: Record<string, SkillName> = { ...playerTargets };
     let assignedCount = 0;
 
@@ -94,6 +103,11 @@ export const TrainingManagementView: React.FC<TrainingManagementViewProps> = ({
   };
 
   const handleManualSave = () => {
+    if (isGuest && onRequireAuth) {
+      onRequireAuth('Pentru a salva obiectivele de antrenament pentru jucători, trebuie să fii managerul unui club înregistrat!');
+      return;
+    }
+
     if (typeof window !== 'undefined') {
       localStorage.setItem('footballin_training_targets', JSON.stringify(playerTargets));
     }

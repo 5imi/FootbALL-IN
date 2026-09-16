@@ -1,7 +1,17 @@
+export interface BankLoan {
+  amount: number;            // 500000 | 1500000 | 2500000
+  totalWeeks: number;        // 18 | 36 | 54
+  interestPercent: number;   // 5 | 10 | 15
+  totalToRepay: number;      // amount * (1 + interestPercent / 100)
+  weeklyInstallment: number; // totalToRepay / totalWeeks
+  remainingWeeks: number;
+  dateTaken: string;
+}
+
 export interface FinancialTransaction {
   id: string;
   type: 'INCOME' | 'EXPENSE';
-  category: 'WAGE' | 'STAFF_HIRE' | 'STAFF_SEVERANCE' | 'COURSE' | 'TICKET_SALES' | 'TRANSFER' | 'BONUS';
+  category: 'WAGE' | 'STAFF_HIRE' | 'STAFF_SEVERANCE' | 'COURSE' | 'TICKET_SALES' | 'TRANSFER' | 'BONUS' | 'FACILITY_UPGRADE' | 'LOAN';
   amount: number;
   description: string;
   date: string;
@@ -11,6 +21,7 @@ export interface ClubFinances {
   balance: number; // Sold curent club
   weeklyStaffWages: number;
   weeklyPlayerWages: number;
+  activeLoan?: BankLoan | null;
   transactions: FinancialTransaction[];
 }
 

@@ -9,17 +9,22 @@ import {
 } from '../engine/staffEngine';
 import { ClubFinances, spendClubBudget } from '../engine/financeEngine';
 import { Language, getTranslation } from '../engine/i18n';
+import { BankLoanModal } from './BankLoanModal';
 
 interface StaffManagementViewProps {
   finances: ClubFinances;
   language: Language;
   onFinancesUpdate: (newFinances: ClubFinances) => void;
+  isGuest?: boolean;
+  onRequireAuth?: (message: string) => void;
 }
 
 export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   finances,
   language,
-  onFinancesUpdate
+  onFinancesUpdate,
+  isGuest = false,
+  onRequireAuth,
 }) => {
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
 
@@ -27,6 +32,7 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
   const [selectedRoleForMarket, setSelectedRoleForMarket] = useState<StaffRole | null>(null);
   const [marketCandidates, setMarketCandidates] = useState<StaffMember[]>([]);
   const [notification, setNotification] = useState<string | null>(null);
+  const [isLoanModalOpen, setIsLoanModalOpen] = useState<boolean>(false);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -35,6 +41,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
   // Deschide piața de candidați pentru un anumit rol
   const handleOpenMarket = (role: StaffRole) => {
+    if (isGuest && onRequireAuth) {
+      onRequireAuth('Pentru a căuta și angaja personal tehnic sau medical (antrenori, medici, fizioterapeuți), înregistrează-ți clubul!');
+      return;
+    }
     const candidates = generateStaffMarketCandidates(role);
     setMarketCandidates(candidates);
     setSelectedRoleForMarket(role);
@@ -42,6 +52,11 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
   // Angajare candidat din piață
   const handleHireCandidate = (candidate: StaffMember) => {
+    if (isGuest && onRequireAuth) {
+      setSelectedRoleForMarket(null);
+      onRequireAuth('Pentru a angaja personal tehnic sau medical, trebuie să fii managerul unui club înregistrat!');
+      return;
+    }
     const signingBonus = candidate.salaryWeekly * 4; // Primă de instalare: 4 săptămâni de salariu
     const spendResult = spendClubBudget(
       signingBonus,
@@ -65,6 +80,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
   // Trimitere la curs de perfecționare (+2 - +4% calitate)
   const handleSendToCourse = (staff: StaffMember) => {
+    if (isGuest && onRequireAuth) {
+      onRequireAuth('Pentru a trimite personalul la cursuri de perfecționare, înregistrează-ți clubul gratuit!');
+      return;
+    }
     const courseFee = 8500;
     const spendResult = spendClubBudget(
       courseFee,
@@ -98,6 +117,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
   // Negociere prelungire contract (+60 zile)
   const handleExtendContract = (staff: StaffMember) => {
+    if (isGuest && onRequireAuth) {
+      onRequireAuth('Pentru a prelungi contractele membrilor din staff, trebuie să fii manager înregistrat!');
+      return;
+    }
     const extensionBonus = staff.salaryWeekly * 2;
     const spendResult = spendClubBudget(
       extensionBonus,
@@ -128,6 +151,10 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
 
   // Concediere membru de staff (Compensație de reziliere)
   const handleFireStaff = (staff: StaffMember) => {
+    if (isGuest && onRequireAuth) {
+      onRequireAuth('Pentru a gestiona personalul clubului, trebuie să deții un cont de manager înregistrat!');
+      return;
+    }
     const severancePay = Math.round(staff.salaryWeekly * 2.5);
     const spendResult = spendClubBudget(
       severancePay,
@@ -180,11 +207,20 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
               {t('staff_desc')}
             </p>
           </div>
-          <div className="bg-zinc-950/80 border border-zinc-800 px-4 py-2 rounded-xl">
-            <span className="text-[11px] text-zinc-400 block font-semibold">{t('staff_budget_label')}:</span>
-            <span className="text-base font-bold font-mono text-emerald-400">
-              €{finances.balance.toLocaleString()}
-            </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsLoanModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold text-xs shadow-lg shadow-amber-600/20 border border-amber-500/40 transition flex items-center gap-1.5"
+            >
+              <span>🏦</span>
+              <span>Împrumută niște bani</span>
+            </button>
+            <div className="bg-zinc-950/80 border border-zinc-800 px-4 py-2 rounded-xl">
+              <span className="text-[11px] text-zinc-400 block font-semibold">{t('staff_budget_label')}:</span>
+              <span className="text-base font-bold font-mono text-emerald-400">
+                €{finances.balance.toLocaleString()}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -361,6 +397,16 @@ export const StaffManagementView: React.FC<StaffManagementViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* ─── Modal Împrumută niște bani (1-la-1 SoccerProject) ─── */}
+      <BankLoanModal
+        isOpen={isLoanModalOpen}
+        onClose={() => setIsLoanModalOpen(false)}
+        finances={finances}
+        onFinancesUpdate={onFinancesUpdate}
+        isGuest={isGuest}
+        onRequireAuth={onRequireAuth}
+      />
 
     </div>
   );

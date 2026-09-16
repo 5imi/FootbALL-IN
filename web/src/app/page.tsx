@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useSession } from 'next-auth/react';
 import { initialTeams } from '../engine/data/teams';
 import { simulateMatch } from '../engine/matchSimulator';
 import { MatchSimulationResult, CorruptionConfig, Player } from '../engine/types';
@@ -15,8 +16,14 @@ import { PlayerDetailsModal } from '../components/PlayerDetailsModal';
 import { TrainingManagementView } from '../components/TrainingManagementView';
 import { StaffManagementView } from '../components/StaffManagementView';
 import { ControlPanelView } from '../components/ControlPanelView';
+import { StadiumManagementView } from '../components/StadiumManagementView';
 import { ManagerRegistrationModal } from '../components/ManagerRegistrationModal';
 import { TransferMarketView } from '../components/TransferMarketView';
+import { PersonalLifeView } from '../components/PersonalLifeView';
+import { MatchResultsView } from '../components/MatchResultsView';
+import { NewsPanelView } from '../components/NewsPanelView';
+import { YouthAcademyView } from '../components/YouthAcademyView';
+import { MindGamesModal } from '../components/MindGamesModal';
 import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { AdBanner } from '../components/AdBanner';
 import { 
@@ -49,10 +56,55 @@ export default function Home() {
   const t = (key: Parameters<typeof getTranslation>[1]) => getTranslation(language, key);
 
   // Manager Activ & Echipe Divizia A
+  const { data: session } = useSession();
   const [activeManager, setActiveManager] = useState<ManagerProfile | null>(() => loadActiveManager());
   const [divisionTeams, setDivisionTeams] = useState<DivisionTeam[]>(() => loadDivisionTeams());
   const [finances, setFinances] = useState<ClubFinances>(() => loadClubFinances());
   const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
+  const [modalInitialTab, setModalInitialTab] = useState<'login' | 'register'>('login');
+  const [modalContextMessage, setModalContextMessage] = useState<string | null>(null);
+
+  const handleRequireAuth = (message: string) => {
+    setModalInitialTab('register');
+    setModalContextMessage(message);
+    setIsRegistrationModalOpen(true);
+  };
+
+  // Sincronizare profil manager din SQLite DB dacă utilizatorul este autentificat
+  useEffect(() => {
+    if (session?.user) {
+      fetch('/api/manager/me')
+        .then(res => res.json())
+        .then(data => {
+          if (data.authenticated && data.team) {
+            setActiveManager({
+              id: String(data.user.id),
+              username: data.user.username || data.user.name || 'Manager',
+              teamId: String(data.team.id),
+              teamName: data.team.name,
+              stadiumName: data.team.stadiumName,
+              email: data.user.email || '',
+              countryCode: 'RO',
+              registeredAt: new Date().toISOString(),
+              budget: data.team.budget || 5000000,
+            });
+            setFinances(prev => ({
+              ...prev,
+              balance: data.team.budget || 5000000,
+            }));
+            if (data.team.players && data.team.players.length > 0) {
+              setHomeTeam(prev => ({
+                ...prev,
+                name: data.team.name,
+                lineup: data.team.players.slice(0, 11),
+                bench: data.team.players.slice(11),
+              }));
+            }
+          }
+        })
+        .catch(err => console.error('Eroare sincronizare profil manager:', err));
+    }
+  }, [session]);
 
   // Echipe meci
   const [homeTeam, setHomeTeam] = useState(() => {
@@ -74,8 +126,13 @@ export default function Home() {
 
   const [awayTeam] = useState(initialTeams[1]);
 
-  // Tab activ: 'match' | 'tactics' | 'training' | 'standings' | 'staff' | 'transfers' | 'control'
-  const [activeTab, setActiveTab] = useState<'match' | 'tactics' | 'training' | 'standings' | 'staff' | 'transfers' | 'control'>('standings');
+  // Tab activ: 'match' | 'results' | 'tactics' | 'training' | 'standings' | 'staff' | 'stadium' | 'academy' | 'transfers' | 'life' | 'control' | 'news'
+  type TabType = 'match' | 'results' | 'tactics' | 'training' | 'standings' | 'staff' | 'stadium' | 'academy' | 'transfers' | 'life' | 'control' | 'news';
+  const [activeTab, setActiveTab] = useState<TabType>('standings');
+
+  // Război Psihologic & Mind Games
+  const [isMindGamesModalOpen, setIsMindGamesModalOpen] = useState<boolean>(false);
+  const [activeMindGames, setActiveMindGames] = useState<string[]>([]);
 
   // Configurație Corupție / Culise
   const [bribeTeam, setBribeTeam] = useState<'none' | 'home' | 'away'>('none');
@@ -270,103 +327,76 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Navigare Tab-uri (Central) */}
+          {/* Navigare Categorii Principale (Grupate pe domenii) */}
           <div className="flex-1 flex items-center justify-center overflow-x-auto no-scrollbar py-1">
-            <nav className="flex items-center gap-1 rounded-xl bg-zinc-900/90 p-1 border border-zinc-800/80 text-xs shadow-inner shrink-0">
-              <button
-                onClick={() => setActiveTab('match')}
-                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
-                  activeTab === 'match'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
-                }`}
-              >
-                <span>🏟️</span>
-                <span>{t('nav_match')}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('tactics')}
-                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
-                  activeTab === 'tactics'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
-                }`}
-              >
-                <span>📋</span>
-                <span>{t('nav_tactics')}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('training')}
-                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
-                  activeTab === 'training'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
-                }`}
-              >
-                <span>🏃</span>
-                <span>{t('nav_training')}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('standings')}
-                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
-                  activeTab === 'standings'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
-                }`}
-              >
-                <span>🏆</span>
-                <span>{t('nav_standings')}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('staff')}
-                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
-                  activeTab === 'staff'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
-                }`}
-              >
-                <span>👔</span>
-                <span>{t('nav_staff')}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('transfers')}
-                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
-                  activeTab === 'transfers'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
-                }`}
-              >
-                <span>🤝</span>
-                <span>{t('nav_transfers')}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('control')}
-                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold transition-all whitespace-nowrap ${
-                  activeTab === 'control'
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
-                }`}
-              >
-                <span>⚙️</span>
-                <span>{t('nav_control')}</span>
-              </button>
+            <nav className="flex items-center gap-1.5 rounded-xl bg-zinc-900/90 p-1 border border-zinc-800/80 text-xs shadow-inner shrink-0">
+              {[
+                {
+                  id: 'matches' as const,
+                  label: 'Meciuri',
+                  icon: '🏟️',
+                  defaultTab: 'match' as const,
+                  count: 3,
+                  isActive: activeTab === 'match' || activeTab === 'results' || activeTab === 'standings',
+                },
+                {
+                  id: 'team' as const,
+                  label: 'Echipa',
+                  icon: '👥',
+                  defaultTab: 'tactics' as const,
+                  count: 4,
+                  isActive: activeTab === 'tactics' || activeTab === 'training' || activeTab === 'life' || activeTab === 'staff',
+                },
+                {
+                  id: 'club' as const,
+                  label: 'Club & Bază',
+                  icon: '🏛️',
+                  defaultTab: 'stadium' as const,
+                  count: 3,
+                  isActive: activeTab === 'stadium' || activeTab === 'academy' || activeTab === 'transfers',
+                },
+                {
+                  id: 'manager' as const,
+                  label: 'Manager',
+                  icon: '⚙️',
+                  defaultTab: 'control' as const,
+                  count: 2,
+                  isActive: activeTab === 'control' || activeTab === 'news',
+                },
+              ].map((group) => (
+                <button
+                  key={group.id}
+                  onClick={() => {
+                    if (!group.isActive) {
+                      setActiveTab(group.defaultTab);
+                    }
+                  }}
+                  className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 font-bold transition-all whitespace-nowrap ${
+                    group.isActive
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
+                  }`}
+                >
+                  <span>{group.icon}</span>
+                  <span>{group.label}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                    group.isActive ? 'bg-blue-800/80 text-blue-100' : 'bg-zinc-800 text-zinc-400'
+                  }`}>
+                    {group.count}
+                  </span>
+                </button>
+              ))}
             </nav>
           </div>
 
           {/* Acțiuni Dreapta (Google Auth + Selector Limbă) */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Google / Gmail Login Button */}
+            {/* Google / Credentials Login Button */}
             <GoogleAuthButton 
-              onAuthChange={(u) => {
-                if (u && !activeManager) {
-                  setIsRegistrationModalOpen(true);
-                }
+              onOpenModal={() => {
+                setModalInitialTab('login');
+                setModalContextMessage(null);
+                setIsRegistrationModalOpen(true);
               }}
             />
 
@@ -389,6 +419,169 @@ export default function Home() {
             </div>
           </div>
 
+        </div>
+
+        {/* ─── Nivel 2: Sub-Meniu dinamic pentru Categoria Activă ─── */}
+        <div className="border-t border-zinc-800/80 bg-zinc-950/80 px-4 py-1.5">
+          <div className="mx-auto flex max-w-[1550px] items-center justify-center gap-1.5 overflow-x-auto no-scrollbar">
+            {/* Sub-taburile categoriei Meciuri */}
+            {(activeTab === 'match' || activeTab === 'results' || activeTab === 'standings') && (
+              <>
+                <button
+                  onClick={() => setActiveTab('match')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'match'
+                      ? 'bg-zinc-800 text-blue-400 border border-blue-500/40 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>🏟️</span>
+                  <span>{t('nav_match')}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('results')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'results'
+                      ? 'bg-zinc-800 text-blue-400 border border-blue-500/40 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>📅</span>
+                  <span>{t('nav_results')}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('standings')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'standings'
+                      ? 'bg-zinc-800 text-blue-400 border border-blue-500/40 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>🏆</span>
+                  <span>{t('nav_standings')}</span>
+                </button>
+              </>
+            )}
+
+            {/* Sub-taburile categoriei Echipa */}
+            {(activeTab === 'tactics' || activeTab === 'training' || activeTab === 'life' || activeTab === 'staff') && (
+              <>
+                <button
+                  onClick={() => setActiveTab('tactics')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'tactics'
+                      ? 'bg-zinc-800 text-blue-400 border border-blue-500/40 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>📋</span>
+                  <span>{t('nav_tactics')}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('training')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'training'
+                      ? 'bg-zinc-800 text-blue-400 border border-blue-500/40 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>🏃</span>
+                  <span>{t('nav_training')}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('life')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'life'
+                      ? 'bg-rose-950/70 text-rose-300 border border-rose-500/50 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>❤️</span>
+                  <span>{t('nav_life')}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('staff')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'staff'
+                      ? 'bg-zinc-800 text-blue-400 border border-blue-500/40 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>👔</span>
+                  <span>{t('nav_staff')}</span>
+                </button>
+              </>
+            )}
+
+            {/* Sub-taburile categoriei Club & Bază */}
+            {(activeTab === 'stadium' || activeTab === 'academy' || activeTab === 'transfers') && (
+              <>
+                <button
+                  onClick={() => setActiveTab('stadium')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'stadium'
+                      ? 'bg-zinc-800 text-blue-400 border border-blue-500/40 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>🏟️</span>
+                  <span>{t('nav_stadium')}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('academy')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'academy'
+                      ? 'bg-blue-900/60 text-blue-300 border border-blue-500/50 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>🎓</span>
+                  <span>{t('nav_academy')}</span>
+                  <span className="bg-blue-500 text-[9px] text-white font-bold px-1.5 py-0.2 rounded-full">NOU</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('transfers')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'transfers'
+                      ? 'bg-zinc-800 text-blue-400 border border-blue-500/40 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>🤝</span>
+                  <span>{t('nav_transfers')}</span>
+                </button>
+              </>
+            )}
+
+            {/* Sub-taburile categoriei Manager */}
+            {(activeTab === 'control' || activeTab === 'news') && (
+              <>
+                <button
+                  onClick={() => setActiveTab('control')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'control'
+                      ? 'bg-zinc-800 text-blue-400 border border-blue-500/40 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>⚙️</span>
+                  <span>{t('nav_control')}</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('news')}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    activeTab === 'news'
+                      ? 'bg-blue-900/60 text-blue-300 border border-blue-500/50 shadow-sm font-bold'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent'
+                  }`}
+                >
+                  <span>📢</span>
+                  <span>{t('nav_news')}</span>
+                  <span className="bg-blue-500 text-[9px] text-white font-bold px-1.5 py-0.2 rounded-full">NOU</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -452,7 +645,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
                 <button
                   onClick={() => handleApplyCorruptionAndRestart('none', bribeAmount, false)}
                   className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-all ${
@@ -462,7 +655,7 @@ export default function Home() {
                   }`}
                 >
                   <span>⚖️</span>
-                  <span>Joc Curat (Sportiv)</span>
+                  <span>Joc Curat</span>
                 </button>
 
                 <button
@@ -498,7 +691,20 @@ export default function Home() {
                   }`}
                 >
                   <span>🤝</span>
-                  <span>Înțelegere Blat (1-1)</span>
+                  <span>Blat Biscotto</span>
+                </button>
+
+                <button
+                  onClick={() => setIsMindGamesModalOpen(true)}
+                  className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-500/50 bg-gradient-to-r from-amber-950/60 to-zinc-900 hover:bg-amber-900/50 text-amber-300 px-3 py-2 text-xs font-bold transition-all shadow-sm ring-1 ring-amber-500/30"
+                >
+                  <span>🕵️</span>
+                  <span>Mind Games & Presă</span>
+                  {activeMindGames.length > 0 && (
+                    <span className="rounded-full bg-amber-500 px-1.5 py-0.2 text-[9px] font-black text-black">
+                      {activeMindGames.length}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -543,15 +749,46 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tab-ul 2: Așezare Tactică */}
+        {/* Tab-ul 1.5: Rezultate & Istoric Meciuri (SoccerProject Style) */}
+        {activeTab === 'results' && (
+          <div className="space-y-6">
+            <MatchResultsView
+              userTeam={homeTeam}
+              finances={finances}
+              onFinancesUpdate={(newFinances) => {
+                setFinances(newFinances);
+                saveClubFinances(newFinances);
+              }}
+              onOpenMatchDetails={() => setActiveTab('match')}
+              onNavigateToTactics={() => setActiveTab('tactics')}
+            />
+          </div>
+        )}
+
+        {/* Tab-ul 2: Așezare Tactică & Selecții Predefinite */}
         {activeTab === 'tactics' && (
           <div className="space-y-6">
             <PitchLineupView 
               homeTeam={homeTeam} 
               awayTeam={awayTeam} 
+              isGuest={!session?.user}
+              onRequireAuth={handleRequireAuth}
               onSelectPlayer={(p, isForeign) => {
                 setSelectedPlayer(p);
                 setIsForeignPlayer(isForeign);
+              }}
+              onUpdateSquad={(updatedLineup, updatedBench) => {
+                setHomeTeam(prev => {
+                  const updated = {
+                    ...prev,
+                    lineup: updatedLineup,
+                    bench: updatedBench
+                  };
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('footballin_user_squad', JSON.stringify([...updatedLineup, ...updatedBench]));
+                  }
+                  return updated;
+                });
               }}
             />
           </div>
@@ -562,6 +799,8 @@ export default function Home() {
           <div className="space-y-6">
             <TrainingManagementView
               players={[...homeTeam.lineup, ...homeTeam.bench]}
+              isGuest={!session?.user}
+              onRequireAuth={handleRequireAuth}
               onOpenPlayerCard={(p) => {
                 setSelectedPlayer(p);
                 setIsForeignPlayer(false);
@@ -570,15 +809,15 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tab-ul 4: Clasament Divizia A (16 Echipe, Steaguri, Boți SP) */}
+        {/* Tab-ul 4: Clasament Divizii (16 Echipe, Steaguri, Boți SP) */}
         {activeTab === 'standings' && (
           <div className="space-y-6">
             <LeagueTableView
               divisionTeams={divisionTeams}
               language={language}
               onOpenTeamDetails={(team) => {
-                if (team.isBot) {
-                  setIsRegistrationModalOpen(true);
+                if (team.isBot && !session?.user) {
+                  handleRequireAuth(`Dorești să preiei clubul bot "${team.name}" din ${team.stadiumName}? Înregistrează-ți contul gratuit!`);
                 }
               }}
             />
@@ -591,7 +830,56 @@ export default function Home() {
             <StaffManagementView
               finances={finances}
               language={language}
+              isGuest={!session?.user}
+              onRequireAuth={handleRequireAuth}
               onFinancesUpdate={(newFinances) => {
+                setFinances(newFinances);
+                saveClubFinances(newFinances);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Tab-ul 5.5: Stadion (Infrastructură) */}
+        {activeTab === 'stadium' && (
+          <div className="space-y-6">
+            <StadiumManagementView
+              language={language}
+              finances={finances}
+              isGuest={!session?.user}
+              onRequireAuth={handleRequireAuth}
+              stadiumName={activeManager?.stadiumName || homeTeam.stadium}
+              onFinancesUpdate={(newFinances) => {
+                setFinances(newFinances);
+                saveClubFinances(newFinances);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Tab-ul 5.6: Academia de Tineret & Triunghiul Echilibrului (GBI) */}
+        {activeTab === 'academy' && (
+          <div className="space-y-6">
+            <YouthAcademyView
+              finances={finances}
+              userSquad={[...homeTeam.lineup, ...homeTeam.bench]}
+              isGuest={!session?.user}
+              onRequireAuth={handleRequireAuth}
+              onSquadUpdated={(newSquad) => {
+                setHomeTeam(prev => {
+                  const newLineup = newSquad.slice(0, prev.lineup.length);
+                  const newBench = newSquad.slice(prev.lineup.length);
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('footballin_user_squad', JSON.stringify([...newLineup, ...newBench]));
+                  }
+                  return {
+                    ...prev,
+                    lineup: newLineup,
+                    bench: newBench
+                  };
+                });
+              }}
+              onFinancesUpdated={(newFinances) => {
                 setFinances(newFinances);
                 saveClubFinances(newFinances);
               }}
@@ -607,6 +895,8 @@ export default function Home() {
               activeManager={activeManager}
               finances={finances}
               userSquad={[...homeTeam.lineup, ...homeTeam.bench]}
+              isGuest={!session?.user}
+              onRequireAuth={handleRequireAuth}
               onPlayerAcquired={(newPlayer) => {
                 setHomeTeam(prev => {
                   const updatedBench = [...prev.bench, newPlayer];
@@ -627,7 +917,36 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tab-ul 6: Panou de Control Manager */}
+        {/* Tab-ul 7: Viață Personală & Vestiar (Impact Real Meci) */}
+        {activeTab === 'life' && (
+          <div className="space-y-6">
+            <PersonalLifeView
+              players={[...homeTeam.lineup, ...homeTeam.bench]}
+              finances={finances}
+              onUpdateSquad={(updatedSquad) => {
+                setHomeTeam(prev => {
+                  const newLineup = updatedSquad.slice(0, prev.lineup.length);
+                  const newBench = updatedSquad.slice(prev.lineup.length);
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('footballin_user_squad', JSON.stringify([...newLineup, ...newBench]));
+                  }
+                  return {
+                    ...prev,
+                    lineup: newLineup,
+                    bench: newBench
+                  };
+                });
+              }}
+              onFinancesUpdate={(newFinances) => {
+                setFinances(newFinances);
+                saveClubFinances(newFinances);
+              }}
+              onOpenPlayerCard={(player) => setSelectedPlayer(player)}
+            />
+          </div>
+        )}
+
+        {/* Tab-ul 8: Panou de Control Manager */}
         {activeTab === 'control' && (
           <div className="space-y-6">
             <ControlPanelView
@@ -641,13 +960,23 @@ export default function Home() {
           </div>
         )}
 
-        {/* Modal Înregistrare Manager & Preluare Echipă Bot */}
+        {/* Tab-ul 9: Panou Știri & Noutăți Oficiale (SoccerProject News) */}
+        {activeTab === 'news' && (
+          <div className="space-y-6">
+            <NewsPanelView />
+          </div>
+        )}
+
+        {/* Modal Înregistrare Manager & Autentificare */}
         <ManagerRegistrationModal
           isOpen={isRegistrationModalOpen}
           onClose={() => setIsRegistrationModalOpen(false)}
-          botTeams={divisionTeams}
           language={language}
-          onRegistrationComplete={handleRegistrationComplete}
+          initialTab={modalInitialTab}
+          contextMessage={modalContextMessage}
+          onAuthSuccess={() => {
+            setIsRegistrationModalOpen(false);
+          }}
         />
 
         {/* Modal Fișă Jucător SoccerProject */}
@@ -656,6 +985,27 @@ export default function Home() {
           isOpen={!!selectedPlayer}
           onClose={() => setSelectedPlayer(null)}
           isForeignClub={isForeignPlayer}
+        />
+
+        {/* Modal Război Psihologic, Presă & Mind Games */}
+        <MindGamesModal
+          isOpen={isMindGamesModalOpen}
+          onClose={() => setIsMindGamesModalOpen(false)}
+          finances={finances}
+          homeTeam={homeTeam}
+          awayTeam={awayTeam}
+          activeActions={activeMindGames}
+          onApplyMindGame={(action) => {
+            if (action.cost > 0) {
+              const updated = {
+                ...finances,
+                balance: finances.balance - action.cost
+              };
+              setFinances(updated);
+              saveClubFinances(updated);
+            }
+            setActiveMindGames(prev => [...prev, action.type]);
+          }}
         />
 
       </main>

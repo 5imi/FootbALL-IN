@@ -2,7 +2,7 @@ export type PositionType = 'GK' | 'LB' | 'CB' | 'SW' | 'RB' | 'LM' | 'CM' | 'RM'
 
 export type TacticalStyle = 'PASSING' | 'WING_PLAY' | 'KICK_AND_RUSH' | 'DEFENSIVE';
 
-export type FormationType = '4-4-2' | '4-3-3' | '3-5-2' | '4-2-3-1' | '5-3-2';
+export type FormationType = '4-4-2' | '4-3-3' | '3-5-2' | '4-2-3-1' | '5-3-2' | '3-4-3' | '5-4-1';
 
 export type WeatherType = 'SUNNY' | 'RAIN' | 'SNOW' | 'FOG';
 

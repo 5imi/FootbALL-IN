@@ -39,3 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+node_modules/
+dist/
+.env
+
+# SQLite local databases
+*.db
+*.db-journal
+
+# AI Assistant & IDE folders (Mandatory Rule)
+.agents/
+.artifacts/
+.gemini/
+.idea/
+.vscode/
+*.iml
+local.properties

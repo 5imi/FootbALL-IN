@@ -4,12 +4,17 @@ export const TRANSLATIONS = {
   ro: {
     // Navigare
     nav_match: 'Meciul Zilei',
+    nav_results: 'Rezultate',
     nav_tactics: 'Primul 11',
     nav_training: 'Antrenament',
     nav_standings: 'Clasament SP',
     nav_staff: 'Staff & Buget',
+    nav_stadium: 'Stadion',
+    nav_academy: 'Academia de Juniori',
     nav_transfers: 'Transferuri',
+    nav_life: 'Viață Personală',
     nav_control: 'Panou Manager',
+    nav_news: 'Știri & Noutăți',
 
     // Înregistrare („Crează-ți propria echipă”)
     reg_title: 'Crează-ți propria echipă',
@@ -96,17 +101,39 @@ export const TRANSLATIONS = {
     staff_negotiate: 'Negociază Contract',
     staff_quality: 'Calitate',
     staff_contract_days: 'Zile Contract',
-    staff_salary: 'Salariu'
+    staff_salary: 'Salariu',
+
+    // Stadion
+    stadium_title: 'Managementul Stadionului',
+    stadium_desc: 'Administrează infrastructura stadionului: tribune, parcări, toalete, baruri, calitatea terenului și panouri publicitare. Upgrade-urile cresc veniturile pe zi de meci.',
+    stadium_upgrade: 'Upgrade',
+    stadium_max: 'MAXIM',
+    stadium_revenue_title: 'Estimare Venituri / Meci',
+    stadium_attendance: 'Spectatori estimați',
+    stadium_ticket_rev: 'Venituri bilete',
+    stadium_bar_rev: 'Venituri baruri',
+    stadium_sponsor_rev: 'Sponsorizare',
+    stadium_total_rev: 'Total venituri/meci',
+    stadium_ticket_price: 'Preț bilet',
+    stadium_rating: 'Rating Stadion',
+    stadium_comfort: 'Scor Confort',
+    stadium_upgrade_success: 'Upgrade realizat cu succes!',
+    stadium_insufficient_funds: 'Fonduri insuficiente pentru acest upgrade!',
   },
   en: {
     // Navigation
     nav_match: 'Match Day',
+    nav_results: 'Results',
     nav_tactics: 'Lineup',
     nav_training: 'Training',
     nav_standings: 'Standings SP',
     nav_staff: 'Staff & Budget',
+    nav_stadium: 'Stadium',
+    nav_academy: 'Youth Academy',
     nav_transfers: 'Transfers',
+    nav_life: 'Personal Life',
     nav_control: 'Manager Panel',
+    nav_news: 'News & Updates',
 
     // Registration ("Create your own team")
     reg_title: 'Create your own team',
@@ -193,7 +220,24 @@ export const TRANSLATIONS = {
     staff_negotiate: 'Negotiate Contract',
     staff_quality: 'Quality',
     staff_contract_days: 'Contract Days',
-    staff_salary: 'Wage'
+    staff_salary: 'Wage',
+
+    // Stadium
+    stadium_title: 'Stadium Management',
+    stadium_desc: 'Manage your stadium infrastructure: stands, parking, toilets, bars, pitch quality and advertising boards. Upgrades increase match-day revenue.',
+    stadium_upgrade: 'Upgrade',
+    stadium_max: 'MAX',
+    stadium_revenue_title: 'Revenue Estimate / Match',
+    stadium_attendance: 'Estimated attendance',
+    stadium_ticket_rev: 'Ticket revenue',
+    stadium_bar_rev: 'Bar revenue',
+    stadium_sponsor_rev: 'Sponsorship',
+    stadium_total_rev: 'Total revenue/match',
+    stadium_ticket_price: 'Ticket price',
+    stadium_rating: 'Stadium Rating',
+    stadium_comfort: 'Comfort Score',
+    stadium_upgrade_success: 'Upgrade completed successfully!',
+    stadium_insufficient_funds: 'Insufficient funds for this upgrade!',
   }
 };
 

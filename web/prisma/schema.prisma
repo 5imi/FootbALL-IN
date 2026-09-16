@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -54,14 +54,20 @@ enum StaffRole {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  username     String    @unique
-  email        String    @unique
-  passwordHash String
-  createdAt    DateTime  @default(now())
-  lastLogin    DateTime?
-  isBot        Boolean   @default(false)
-  teams        Team[]
+  id            Int       @id @default(autoincrement())
+  username      String?   @unique
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+  lastLogin     DateTime?
+  isBot         Boolean   @default(false)
+  
+  teams         Team[]
+  accounts      Account[]
+  sessions      Session[]
 }
 
 model Division {
@@ -79,7 +85,7 @@ model Team {
   divisionId     Int?
   name           String
   stadiumName    String
-  budget         Decimal   @default(5000000.00) @db.Decimal(15, 2)
+  budget         Float     @default(5000000.00)
   teamSpirit     Int       @default(100)
   aggressiveness Int       @default(50)
   createdAt      DateTime  @default(now())
@@ -99,16 +105,31 @@ model Team {
 }
 
 model Stadium {
-  id           Int   @id @default(autoincrement())
-  teamId       Int   @unique
-  capacity     Int   @default(5000)
-  seats        Int   @default(5000)
-  parking      Int   @default(1650)
-  toilets      Int   @default(50)
-  bars         Int   @default(10)
-  pitchQuality Int   @default(100)
+  id                Int               @id @default(autoincrement())
+  teamId            Int               @unique
+  capacity          Int               @default(5000)
+  seats             Int               @default(5000)
+  parking           Int               @default(1650)
+  toilets           Int               @default(50)
+  bars              Int               @default(10)
+  pitchQuality      Int               @default(100)
+  advertisingBoards Int               @default(0)
+  ticketPrice       Float             @default(10.0)
   
-  team         Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team              Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  upgradeLogs       StadiumUpgradeLog[]
+}
+
+model StadiumUpgradeLog {
+  id          Int      @id @default(autoincrement())
+  stadiumId   Int
+  category    String   // SEATS, PARKING, TOILETS, BARS, PITCH, ADS
+  cost        Float
+  oldValue    Int
+  newValue    Int
+  createdAt   DateTime @default(now())
+  
+  stadium     Stadium  @relation(fields: [stadiumId], references: [id], onDelete: Cascade)
 }
 
 model Player {
@@ -135,9 +156,9 @@ model Player {
   
   globalQuality    Int?
   
-  wage             Decimal      @db.Decimal(10, 2)
+  wage             Float
   contractEnd      DateTime?
-  value            Decimal      @db.Decimal(12, 2)
+  value            Float
   
   isInjured        Boolean      @default(false)
   injuryDaysLeft   Int          @default(0)
@@ -163,7 +184,7 @@ model Staff {
   isOnCourse       Boolean   @default(false)
   courseEndDate    DateTime?
   
-  wage             Decimal   @db.Decimal(10, 2)
+  wage             Float
   contractEnd      DateTime?
   
   team             Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -182,7 +203,7 @@ model Match {
   isPlayed       Boolean   @default(false)
   homeGoals      Int       @default(0)
   awayGoals      Int       @default(0)
-  matchReport    Json?
+  matchReport    String?
   
   homeTeam       Team      @relation("HomeTeam", fields: [homeTeamId], references: [id])
   awayTeam       Team      @relation("AwayTeam", fields: [awayTeamId], references: [id])
@@ -194,12 +215,41 @@ model Transfer {
   playerId     Int
   sellerTeamId Int?
   buyerTeamId  Int?
-  startingBid  Decimal        @db.Decimal(12, 2)
-  currentBid   Decimal        @default(0) @db.Decimal(12, 2)
+  startingBid  Float
+  currentBid   Float          @default(0)
   deadline     DateTime
   status       TransferStatus @default(OPEN)
   
   player       Player         @relation(fields: [playerId], references: [id], onDelete: Cascade)
   sellerTeam   Team?          @relation("SellerTeam", fields: [sellerTeamId], references: [id], onDelete: SetNull)
   buyerTeam    Team?          @relation("BuyerTeam", fields: [buyerTeamId], references: [id])
+}
+
+// --- NextAuth Models ---
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             Int
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
