@@ -26,6 +26,7 @@ import { YouthAcademyView } from '../components/YouthAcademyView';
 import { MindGamesModal } from '../components/MindGamesModal';
 import { GoogleAuthButton } from '../components/GoogleAuthButton';
 import { AdBanner } from '../components/AdBanner';
+import { MatchReportModal } from '../components/MatchReportModal';
 import { 
   loadDivisionTeams, 
   loadActiveManager, 
@@ -133,6 +134,42 @@ export default function Home() {
   // Război Psihologic & Mind Games
   const [isMindGamesModalOpen, setIsMindGamesModalOpen] = useState<boolean>(false);
   const [activeMindGames, setActiveMindGames] = useState<string[]>([]);
+  const [isPostMatchReportOpen, setIsPostMatchReportOpen] = useState<boolean>(false);
+  const [betWinNotification, setBetWinNotification] = useState<{ amount: number; message: string } | null>(null);
+
+  // Sold FootCoins (Pariuri & Predicții Pre-Meci)
+  const [footCoins, setFootCoins] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('footballin_footcoins');
+      return saved ? parseInt(saved, 10) : 100;
+    }
+    return 100;
+  });
+
+  // Încărcare automată a ultimei tactici pre-meci confirmate
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedSetup = localStorage.getItem('footballin_latest_confirmed_prematch');
+      if (savedSetup) {
+        try {
+          const parsed = JSON.parse(savedSetup);
+          if (parsed.formation) {
+            setHomeTeam(prev => ({
+              ...prev,
+              tactics: {
+                ...prev.tactics,
+                formation: parsed.formation,
+                style: parsed.style || prev.tactics.style,
+                aggressiveness: parsed.aggressiveness ?? prev.tactics.aggressiveness,
+              }
+            }));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, []);
 
   // Configurație Corupție / Culise
   const [bribeTeam, setBribeTeam] = useState<'none' | 'home' | 'away'>('none');
@@ -242,9 +279,78 @@ export default function Home() {
     setIsPlaying(false);
     setIsFinished(false);
     setCurrentMinute(1);
+    setBetWinNotification(null);
     const newSeed = customSeed ?? Math.floor(Math.random() * 1000000);
     setMatchResult(simulateMatch(homeTeam, awayTeam, newSeed, corruptionConfig));
   };
+
+  // Validare pariuri pre-meci la finalul meciului
+  useEffect(() => {
+    if (isFinished && typeof window !== 'undefined') {
+      const savedPrematch = localStorage.getItem('footballin_latest_confirmed_prematch');
+      if (savedPrematch) {
+        try {
+          const setup = JSON.parse(savedPrematch);
+          if (setup.predictions && setup.predictions.betStake > 0) {
+            const pred = setup.predictions;
+            let winnings = 0;
+            const reasons: string[] = [];
+
+            const homeScore = currentScore[0];
+            const awayScore = currentScore[1];
+            const actualResult = homeScore > awayScore ? '1' : homeScore === awayScore ? 'X' : '2';
+
+            // 1X2
+            if (pred.matchResult && pred.matchResult === actualResult) {
+              const gain = Math.floor(pred.betStake * 2.5);
+              winnings += gain;
+              reasons.push(`Rezultat 1X2 corect (+${gain} FC)`);
+            }
+
+            // Scor Exact
+            if (pred.predictedScore === `${homeScore}-${awayScore}`) {
+              const gain = pred.betStake * 8;
+              winnings += gain;
+              reasons.push(`Scor Exact (${pred.predictedScore}) (+${gain} FC)`);
+            }
+
+            // Cartonaș Roșu
+            const hasRed = matchResult.allEvents.some(e => e.type === 'RED_CARD');
+            if (pred.willHaveRedCard && hasRed) {
+              winnings += 30;
+              reasons.push(`Cartonaș Roșu (+30 FC)`);
+            }
+
+            // Penalty
+            const hasPen = matchResult.allEvents.some(e => e.type === 'PENALTY');
+            if (pred.willHavePenalty && hasPen) {
+              winnings += 25;
+              reasons.push(`Penalty acordat (+25 FC)`);
+            }
+
+            // Gol târziu (85+)
+            const hasLate = matchResult.allEvents.some(e => e.minute >= 85 && (e.type === 'GOAL' || e.type === 'PENALTY'));
+            if (pred.willHaveLateGoal && hasLate) {
+              winnings += 20;
+              reasons.push(`Gol pe final (+20 FC)`);
+            }
+
+            if (winnings > 0) {
+              const newTotal = footCoins + winnings;
+              setFootCoins(newTotal);
+              localStorage.setItem('footballin_footcoins', newTotal.toString());
+              setBetWinNotification({
+                amount: winnings,
+                message: reasons.join(' • '),
+              });
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, [isFinished]);
 
   const handleApplyCorruptionAndRestart = (
     teamChoice: 'none' | 'home' | 'away',
@@ -320,9 +426,10 @@ export default function Home() {
                 <span className="text-xs font-bold text-zinc-100 max-w-[130px] sm:max-w-[170px] truncate leading-tight">
                   {activeManager ? activeManager.teamName : homeTeam.name}
                 </span>
-                <span className="text-[10px] font-mono font-bold text-emerald-400 leading-tight">
-                  €{finances.balance.toLocaleString()}
-                </span>
+                <div className="flex items-center gap-2 text-[10px] font-mono font-bold leading-tight">
+                  <span className="text-emerald-400">€{finances.balance.toLocaleString()}</span>
+                  <span className="text-amber-300 flex items-center gap-0.5"><span>🪙</span>{footCoins} FC</span>
+                </div>
               </div>
             </div>
           </div>
@@ -720,6 +827,40 @@ export default function Home() {
               onResetMatch={() => handleResetMatch()}
             />
 
+            {/* Banner Meci Încheiat & Rezultate Pariuri */}
+            {isFinished && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-zinc-900 to-blue-950/80 border border-emerald-500/50 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in zoom-in-95">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🏆</span>
+                  <div>
+                    <h3 className="text-sm font-black text-white flex items-center gap-2">
+                      <span>Meci Încheiat! Scor Final: {currentScore[0]} - {currentScore[1]}</span>
+                      <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400 border border-emerald-500/30">
+                        REZULTAT OFICIAL
+                      </span>
+                    </h3>
+                    {betWinNotification ? (
+                      <p className="text-xs text-amber-300 font-bold mt-0.5">
+                        🎰 Predicții Câștigătoare: +{betWinNotification.amount} FootCoins! ({betWinNotification.message})
+                      </p>
+                    ) : (
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        Evenimentele și statisticile au fost arhivate în raportul meciului.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsPostMatchReportOpen(true)}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition shadow-lg shadow-blue-950/60 flex items-center gap-2 shrink-0"
+                >
+                  <span>📄</span>
+                  <span>Deschide Raport Meci Complet (SP) &rarr;</span>
+                </button>
+              </div>
+            )}
+
             {/* Timeline */}
             <MatchTimeline
               currentMinute={currentMinute}
@@ -1007,6 +1148,25 @@ export default function Home() {
             setActiveMindGames(prev => [...prev, action.type]);
           }}
         />
+
+        {/* Modal Raport Post-Meci Complet */}
+        {isPostMatchReportOpen && (
+          <MatchReportModal
+            match={{
+              id: 'current-match-live',
+              date: 'Azi (04:00 CET)',
+              type: 'L',
+              homeTeamName: homeTeam.name,
+              awayTeamName: awayTeam.name,
+              homeScore: currentScore[0],
+              awayScore: currentScore[1],
+              isUserHome: true,
+              roundName: 'Etapa Curentă',
+              highlights: `Scor final ${currentScore[0]} - ${currentScore[1]}. Meci disputat pe ${homeTeam.stadium}. Arbitru: ${matchResult.referee?.name || 'Salim Al Harrasi'}.`,
+            }}
+            onClose={() => setIsPostMatchReportOpen(false)}
+          />
+        )}
 
       </main>
     </div>

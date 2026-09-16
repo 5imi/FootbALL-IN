@@ -135,20 +135,35 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
           </div>
         </div>
 
-        {/* Scor Central */}
+        {/* Scor Central cu Suspans */}
         <div className="col-span-1 flex flex-col items-center justify-center">
-          <div className="flex items-center gap-2 font-mono text-4xl font-extrabold tracking-tight text-white md:text-5xl">
-            <span className={currentScore[0] > currentScore[1] ? 'text-blue-400' : 'text-white'}>
-              {currentScore[0]}
-            </span>
-            <span className="text-zinc-600">:</span>
-            <span className={currentScore[1] > currentScore[0] ? 'text-red-400' : 'text-white'}>
-              {currentScore[1]}
-            </span>
-          </div>
-          <span className="mt-1 font-mono text-xs font-medium text-zinc-400">
-            {currentMinute > 90 ? `Min. 90+${currentMinute - 90}'` : `Min. ${currentMinute}'`}
-          </span>
+          {!isPlaying && !isFinished && currentMinute === 1 ? (
+            <div className="flex flex-col items-center animate-in fade-in zoom-in-95">
+              <div className="flex items-center gap-2 font-mono text-3xl md:text-4xl font-black tracking-wider text-amber-400 px-3.5 py-1 rounded-xl bg-zinc-950 border border-amber-500/40 shadow-inner">
+                <span className="animate-pulse">?</span>
+                <span className="text-zinc-600">:</span>
+                <span className="animate-pulse">?</span>
+              </div>
+              <span className="mt-1.5 font-mono text-[10px] font-bold text-amber-300 uppercase tracking-wider px-2 py-0.5 rounded bg-amber-950/60 border border-amber-800/60">
+                În Așteptare &bull; Start pt. Rezultat
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 font-mono text-4xl font-extrabold tracking-tight text-white md:text-5xl">
+                <span className={currentScore[0] > currentScore[1] ? 'text-blue-400' : 'text-white'}>
+                  {currentScore[0]}
+                </span>
+                <span className="text-zinc-600">:</span>
+                <span className={currentScore[1] > currentScore[0] ? 'text-red-400' : 'text-white'}>
+                  {currentScore[1]}
+                </span>
+              </div>
+              <span className="mt-1 font-mono text-xs font-medium text-zinc-400">
+                {currentMinute > 90 ? `Min. 90+${currentMinute - 90}'` : `Min. ${currentMinute}'`}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Oaspeți */}

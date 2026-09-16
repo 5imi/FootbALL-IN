@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Team } from '../engine/types';
 import { ClubFinances } from '../engine/financeEngine';
 import { MatchReportModal } from './MatchReportModal';
+import { PreMatchSetupModal, PreMatchSetupData } from './PreMatchSetupModal';
 
 export interface MatchHistoryEntry {
   id: string;
@@ -291,6 +292,20 @@ export const MatchResultsView: React.FC<MatchResultsViewProps> = ({
   const [upcomingMatches, setUpcomingMatches] = useState<UpcomingFixture[]>(INITIAL_UPCOMING_FIXTURES);
   const [activeDossier, setActiveDossier] = useState<{ match: UpcomingFixture; dossier: SpyDossier } | null>(null);
   const [spyNotification, setSpyNotification] = useState<string | null>(null);
+  const [setupFixture, setSetupFixture] = useState<UpcomingFixture | null>(null);
+  const [confirmedSetups, setConfirmedSetups] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const confirmed: Record<string, boolean> = {};
+      upcomingMatches.forEach(f => {
+        if (localStorage.getItem(`footballin_prematch_${f.id}`)) {
+          confirmed[f.id] = true;
+        }
+      });
+      setConfirmedSetups(confirmed);
+    }
+  }, [upcomingMatches]);
 
   const teamName = userTeam?.name || 'FC Foresta';
 
@@ -552,8 +567,23 @@ export const MatchResultsView: React.FC<MatchResultsViewProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-800/60">
-                        Programat (04:00 CET)
+                      {confirmedSetups[fix.id] && (
+                        <span className="text-[11px] font-bold text-emerald-400 bg-emerald-950/80 px-2.5 py-1 rounded-lg border border-emerald-500/50 flex items-center gap-1 shadow-sm">
+                          <span>✓</span>
+                          <span>Echipă Confirmată</span>
+                        </span>
+                      )}
+
+                      <button
+                        onClick={() => setSetupFixture(fix)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition shadow-md shadow-blue-950/50"
+                      >
+                        <span>⚙️</span>
+                        <span>Setează Echipa (SP)</span>
+                      </button>
+
+                      <span className="text-xs font-semibold text-zinc-400 bg-zinc-800/60 px-2.5 py-1 rounded-lg border border-zinc-700/60">
+                        04:00 CET
                       </span>
                     </div>
                   </div>
@@ -859,6 +889,32 @@ export const MatchResultsView: React.FC<MatchResultsViewProps> = ({
         <MatchReportModal
           match={selectedMatch}
           onClose={() => setSelectedMatch(null)}
+        />
+      )}
+
+      {/* ─── Modal Setare Pre-Meci & Pariuri (SP-Style) ─── */}
+      {setupFixture && (
+        <PreMatchSetupModal
+          isOpen={!!setupFixture}
+          onClose={() => setSetupFixture(null)}
+          fixture={{
+            id: setupFixture.id,
+            round: setupFixture.round,
+            home: setupFixture.home,
+            away: setupFixture.away,
+            date: setupFixture.date,
+            stadium: setupFixture.stadium,
+            referee: {
+              name: setupFixture.spyReport.refereeProfile.name,
+              strictness: setupFixture.spyReport.refereeProfile.strictness,
+            },
+            opponentTacticsHint: setupFixture.spyReport.isUnlocked ? setupFixture.spyReport.scoutTip.recommendedStyle : undefined,
+          }}
+          userTeam={userTeam}
+          finances={finances || null}
+          onSaveSetup={(setupData) => {
+            setConfirmedSetups(prev => ({ ...prev, [setupData.matchId]: true }));
+          }}
         />
       )}
 
