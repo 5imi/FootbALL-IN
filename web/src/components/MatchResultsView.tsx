@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Team } from '../engine/types';
 import { ClubFinances } from '../engine/financeEngine';
+import { MatchReportModal } from './MatchReportModal';
 
 export interface MatchHistoryEntry {
   id: string;
@@ -853,48 +854,12 @@ export const MatchResultsView: React.FC<MatchResultsViewProps> = ({
         </div>
       )}
 
-      {/* ─── Modal Raport Meci Clicat ─── */}
+      {/* ─── Modal Raport Meci Complet (SP-Style) ─── */}
       {selectedMatch && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-400 font-mono">
-                Raport Meci &bull; {selectedMatch.roundName}
-              </span>
-              <button 
-                onClick={() => setSelectedMatch(null)}
-                className="text-zinc-400 hover:text-white text-sm w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="text-center py-3 bg-zinc-950/80 rounded-xl border border-zinc-800 space-y-1">
-              <div className="text-xs text-zinc-400 font-mono">{selectedMatch.date}</div>
-              <div className="text-lg font-black text-white flex items-center justify-center gap-3">
-                <span>{selectedMatch.homeTeamName}</span>
-                <span className="text-xl font-mono text-emerald-400 px-2 py-0.5 bg-emerald-950/60 rounded border border-emerald-800/60">
-                  {selectedMatch.homeScore} - {selectedMatch.awayScore}
-                </span>
-                <span>{selectedMatch.awayTeamName}</span>
-              </div>
-            </div>
-
-            <div className="text-xs space-y-2 text-zinc-300">
-              <div className="font-bold text-zinc-400 uppercase text-[10px]">Rezumat Meci:</div>
-              <p className="p-3 bg-zinc-950/50 rounded-lg border border-zinc-800/80 italic text-zinc-300">
-                {selectedMatch.highlights}
-              </p>
-            </div>
-
-            <button
-              onClick={() => setSelectedMatch(null)}
-              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold text-xs text-white transition"
-            >
-              Închide Raportul
-            </button>
-          </div>
-        </div>
+        <MatchReportModal
+          match={selectedMatch}
+          onClose={() => setSelectedMatch(null)}
+        />
       )}
 
     </div>
